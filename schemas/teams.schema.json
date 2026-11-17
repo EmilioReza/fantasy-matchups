@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "teams.schema.json",
+  "title": "teams",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "teamId": {
+        "type": "integer"
+      },
+      "name": {
+        "type": "string"
+      },
+      "abbrev": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "logo": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "record": {
+        "type": "object",
+        "properties": {
+          "wins": {
+            "type": "number"
+          },
+          "losses": {
+            "type": "number"
+          },
+          "ties": {
+            "type": "number"
+          },
+          "pointsFor": {
+            "type": "number"
+          },
+          "pointsAgainst": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "wins",
+          "losses",
+          "ties",
+          "pointsFor",
+          "pointsAgainst"
+        ],
+        "additionalProperties": false
+      },
+      "roster": {
+        "type": "array",
+        "items": {
+          "type": "integer"
+        }
+      },
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "matchupPeriod": {
+              "type": "integer"
+            },
+            "matchupId": {
+              "type": "integer"
+            },
+            "opponentId": {
+              "type": "integer"
+            },
+            "pointsFor": {
+              "type": "number"
+            },
+            "pointsAgainst": {
+              "type": "number"
+            },
+            "result": {
+              "enum": [
+                "W",
+                "L",
+                "T",
+                null
+              ]
+            }
+          },
+          "required": [
+            "matchupPeriod",
+            "matchupId",
+            "opponentId",
+            "pointsFor",
+            "pointsAgainst",
+            "result"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "teamId",
+      "name",
+      "abbrev",
+      "owner",
+      "logo",
+      "record",
+      "roster",
+      "results"
+    ],
+    "additionalProperties": false
+  },
+  "minItems": 2
+}

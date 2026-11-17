@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schedule.schema.json",
+  "title": "schedule",
+  "type": "object",
+  "properties": {
+    "periods": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "matchupPeriod": {
+            "type": "integer"
+          },
+          "dates": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          }
+        },
+        "required": [
+          "matchupPeriod",
+          "dates"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "proTeams": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "abbrev": {
+            "type": "string"
+          },
+          "games": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          }
+        },
+        "required": [
+          "abbrev",
+          "games"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "periods",
+    "proTeams"
+  ],
+  "additionalProperties": false
+}

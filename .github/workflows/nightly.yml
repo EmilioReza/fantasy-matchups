@@ -1,0 +1,94 @@
+name: nightly
+
+# Runs at 1:00 AM and 5:00 AM America/Chicago all season. Cron is UTC and Chicago's offset
+# changes at daylight saving, so both candidate UTC times are scheduled and scripts/gate.ts
+# lets exactly one of each pair through per Chicago date.
+on:
+  schedule:
+    - cron: "0 6 * * *"    # 1:00 AM CDT / midnight CST
+    - cron: "0 7 * * *"    # 1:00 AM CST / 2:00 AM CDT
+    - cron: "0 10 * * *"   # 5:00 AM CDT / 4:00 AM CST
+    - cron: "0 11 * * *"   # 5:00 AM CST / 6:00 AM CDT
+  workflow_dispatch: {}    # manual "Run workflow" button
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: Time gate (Chicago local time)
+        id: gate
+        run: npx tsx scripts/gate.ts
+
+      - name: Fetch ESPN data
+        if: steps.gate.outputs.run == 'true'
+        run: npm run fetch
+        env:
+          RAW_DIR: ${{ runner.temp }}/espn-raw
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+
+      - name: Build data
+        if: steps.gate.outputs.run == 'true'
+        run: npm run build-data
+        env:
+          RAW_DIR: ${{ runner.temp }}/espn-raw
+          RUN_KIND: ${{ steps.gate.outputs.kind }}
+          CHICAGO_DATE: ${{ steps.gate.outputs.chicago_date }}
+
+      - name: Validate against JSON Schemas
+        if: steps.gate.outputs.run == 'true'
+        run: npm run validate-data
+
+      - name: Commit data
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data
+          if git diff --cached --quiet; then
+            echo "No data changes."
+          else
+            git commit -m "data: nightly update $(TZ=America/Chicago date +%F)"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+            git push
+          fi
+
+      - name: Build site
+        if: steps.gate.outputs.run == 'true'
+        run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.gate.outputs.run == 'true'
+        with:
+          path: dist
+
+  deploy:
+    needs: update
+    if: needs.update.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
