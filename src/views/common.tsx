@@ -18,12 +18,16 @@ export function TeamLogo({ team, size = 36 }: { team: Team | undefined; size?: n
   );
 }
 
-/** "62% Team name" on the home side, "Team name 38%" on the away side. */
+/** First word of a team name: "Capture the Flagg" → "Capture". */
+export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? '';
+
+/** "62% Capture" on the home side, "Sengooners 38%" on the away side; full name on hover. */
 export function WinPct({ team, p, side }: { team: Team | undefined; p: number; side: 'home' | 'away' }) {
-  const name = team?.name ?? '';
+  const full = team?.name ?? '';
+  const name = firstName(full);
   const num = <strong class="wp-num">{pct(p)}</strong>;
   return (
-    <span class={`wp wp-${side} c-${side}`} title={`${name}: ${pct(p)} to win`}>
+    <span class={`wp wp-${side} c-${side}`} title={`${full}: ${pct(p)} to win`}>
       {side === 'home' ? <>{num}<span class="wp-name">{name}</span></> : <><span class="wp-name">{name}</span>{num}</>}
     </span>
   );
