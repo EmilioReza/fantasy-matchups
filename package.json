@@ -10,6 +10,7 @@
     "probe": "tsx scripts/probe.ts",
     "fetch": "tsx scripts/fetch.ts",
     "build-data": "tsx scripts/build-data.ts",
+    "logos": "tsx scripts/logos.ts",
     "validate-data": "tsx scripts/validate-data.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

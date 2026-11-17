@@ -4,7 +4,7 @@ import { loadWeek } from '../data.ts';
 import { fmt0, fmt1, pct, shortRange } from '../format.ts';
 import { readKey, writeKey } from '../lib/overrides.ts';
 import type { Matchup, Side, Week } from '../lib/types.ts';
-import { TeamLogo, WinBar, record } from './common.tsx';
+import { TeamLogo, WinBar, WinPct, record } from './common.tsx';
 
 export const MY_TEAM_KEY = 'fmp:myTeam';
 
@@ -53,11 +53,11 @@ function MatchupCard({ core, week, m, mine }: { core: Core; week: Week; m: Match
       {!final && (
         <div class="card-foot">
           <div class="card-wp num">
-            <span class="c-home">{pct(m.home.winProb)}</span>
-            <span class="muted">{week.status === 'upcoming' ? 'win prob' : `proj. margin ${fmt1(margin)}`}</span>
-            <span class="c-away">{pct(m.away.winProb)}</span>
+            <WinPct team={h} p={m.home.winProb} side="home" />
+            <WinPct team={a} p={m.away.winProb} side="away" />
           </div>
           <WinBar home={m.home.winProb} label={`Win probability: ${h?.name} ${pct(m.home.winProb)}, ${a?.name} ${pct(m.away.winProb)}`} />
+          <div class="muted wp-mid">{week.status === 'upcoming' ? 'Win probability' : `Win probability · projected margin ${fmt1(margin)}`}</div>
         </div>
       )}
     </a>

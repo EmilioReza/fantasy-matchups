@@ -10,7 +10,7 @@ import {
   type MatchupOverrides,
 } from '../lib/overrides.ts';
 import type { LineupRow, Matchup, Week } from '../lib/types.ts';
-import { StatusChip, TeamLogo, WinBar } from './common.tsx';
+import { StatusChip, TeamLogo, WinBar, WinPct } from './common.tsx';
 
 type FpgSource = 'season' | 'last15';
 const FPG_KEY = 'fmp:fpgSource';
@@ -123,10 +123,10 @@ function Band({ core, calc, wp, week }: { core: Core; calc: TeamCalc[]; wp: { ho
         )}
         {wp && !final && (
           <>
+            <div class="band-wp-label">Win probability</div>
             <div class="band-wp num">
-              <span class="c-home">{pct(wp.home)}</span>
-              <span class="band-wp-label">win probability</span>
-              <span class="c-away">{pct(wp.away)}</span>
+              <WinPct team={th} p={wp.home} side="home" />
+              <WinPct team={ta} p={wp.away} side="away" />
             </div>
             <WinBar home={wp.home} label={`Win probability: ${th.name} ${pct(wp.home)}, ${ta.name} ${pct(wp.away)}`} />
           </>

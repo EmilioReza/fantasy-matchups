@@ -42,6 +42,14 @@ Add repository secrets `ESPN_S2` and `ESPN_SWID` (Settings → Secrets and varia
 from espn.com cookies in a desktop browser (DevTools → Application → Cookies). They are only sent as
 a `Cookie` header and never written to files or logs.
 
+## Team logos
+
+`scripts/logos.ts` runs after `build-data` and saves each team's logo into `public/data/logos/`
+(once per logo URL), so the site serves its own copies. Custom uploaded logos are only visible to a
+signed-in ESPN account, so they download only when the `ESPN_S2` and `ESPN_SWID` secrets are set;
+without them those teams show their abbreviation. Once a logo has been saved it stays, even if the
+cookies later expire.
+
 ## Offseason
 
 GitHub disables scheduled workflows after 60 days with no repository activity. Nightly data commits

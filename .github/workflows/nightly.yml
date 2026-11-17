@@ -53,6 +53,13 @@ jobs:
           RUN_KIND: ${{ steps.gate.outputs.kind }}
           CHICAGO_DATE: ${{ steps.gate.outputs.chicago_date }}
 
+      - name: Download team logos
+        if: steps.gate.outputs.run == 'true'
+        run: npm run logos
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+
       - name: Validate against JSON Schemas
         if: steps.gate.outputs.run == 'true'
         run: npm run validate-data

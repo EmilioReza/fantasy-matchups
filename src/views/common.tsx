@@ -14,7 +14,18 @@ export function TeamLogo({ team, size = 36 }: { team: Team | undefined; size?: n
     );
   }
   return (
-    <img class="logo" src={team.logo} alt="" width={size} height={size} loading="lazy" referrerpolicy="no-referrer" onError={() => setFailed(true)} />
+    <img class="logo" src={/^https?:/.test(team.logo) ? team.logo : import.meta.env.BASE_URL + team.logo} alt="" width={size} height={size} loading="lazy" referrerpolicy="no-referrer" onError={() => setFailed(true)} />
+  );
+}
+
+/** "62% Team name" on the home side, "Team name 38%" on the away side. */
+export function WinPct({ team, p, side }: { team: Team | undefined; p: number; side: 'home' | 'away' }) {
+  const name = team?.name ?? '';
+  const num = <strong class="wp-num">{pct(p)}</strong>;
+  return (
+    <span class={`wp wp-${side} c-${side}`} title={`${name}: ${pct(p)} to win`}>
+      {side === 'home' ? <>{num}<span class="wp-name">{name}</span></> : <><span class="wp-name">{name}</span>{num}</>}
+    </span>
   );
 }
 
