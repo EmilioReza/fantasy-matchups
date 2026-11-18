@@ -24,7 +24,7 @@ for (const sp of manifest.scoringPeriods) dayRosters[sp] = parseDayRoster(raw(`r
 const inp = {
   settings,
   pro,
-  teams: parseTeams(league),
+  teams: parseTeams(league, cfg.managerNames),
   matchups: parseMatchups(league),
   players: new Map(players.map((p) => [p.playerId, p])),
   dayRosters,

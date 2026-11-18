@@ -124,6 +124,11 @@ thead .col-player, tfoot .col-player { background: var(--surface-2); }
 .pl-meta { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); }
 .slot-tag { font-size: 10.5px; font-weight: 600; color: var(--muted); }
 .is-bench .pl-name { color: var(--muted); }
+.is-bench td, .is-bench td .strong { color: var(--muted); }
+.is-bench .headshot { opacity: .5; }
+.pl { display: flex; align-items: center; gap: 8px; }
+.pl-text { min-width: 0; }
+.headshot { flex: none; width: 36px; height: 26px; object-fit: cover; object-position: top; border-radius: 6px; background: var(--surface-2); }
 .is-bench td.day-cell.locked { color: var(--muted); }
 .is-off { opacity: .65; }
 .col-day { text-align: center !important; min-width: 54px; }

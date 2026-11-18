@@ -3,7 +3,7 @@ import type { Core } from '../data.ts';
 import { loadWeek } from '../data.ts';
 import { fmt0, fmt1 } from '../format.ts';
 import type { LineupRow, Week } from '../lib/types.ts';
-import { StatusChip, TeamLogo, record } from './common.tsx';
+import { Headshot, StatusChip, TeamLogo, record } from './common.tsx';
 
 export function TeamView({ core, teamId }: { core: Core; teamId: number }) {
   const team = core.teams.get(teamId);
@@ -63,8 +63,13 @@ export function TeamView({ core, teamId }: { core: Core; teamId: number }) {
                 return (
                   <tr class={r?.starter ? 'is-starter' : 'is-bench'}>
                     <th scope="row" class="col-player">
-                      <span class="pl-name">{p?.name ?? pid}</span>
-                      <span class="pl-meta">{p?.proTeam} · {p?.positions.join(', ')}</span>
+                      <span class="pl">
+                        <Headshot playerId={pid} />
+                        <span class="pl-text">
+                          <span class="pl-name">{p?.name ?? pid}</span>
+                          <span class="pl-meta">{p?.proTeam} · {p?.positions.join(', ')}</span>
+                        </span>
+                      </span>
                     </th>
                     <td><span class="slot-tag">{r?.slot ?? ''}</span></td>
                     <td>{p && p.injuryStatus !== 'ACTIVE' ? <StatusChip status={p.injuryStatus} /> : <span class="muted">Active</span>}{p?.returnDate && <span class="muted small"> back {p.returnDate.slice(5).replace('-', '/')}</span>}</td>

@@ -50,6 +50,11 @@ signed-in ESPN account, so they download only when the `ESPN_S2` and `ESPN_SWID`
 without them those teams show their abbreviation. Once a logo has been saved it stays, even if the
 cookies later expire.
 
+## Manager names
+
+Win percentages show each manager's first name from ESPN. To show a different name, add it to
+`managerNames` in `config/league.json` by team id (e.g. `"2": "Adhitya"`).
+
 ## Offseason
 
 GitHub disables scheduled workflows after 60 days with no repository activity. Nightly data commits

@@ -6,6 +6,8 @@ export interface LeagueConfig {
   leagueId: number;
   season: number;
   timezone: string;
+  /** teamId → manager first name, when ESPN's first name is not the one the league uses. */
+  managerNames?: Record<string, string>;
 }
 
 export function loadLeagueConfig(): LeagueConfig {
@@ -98,7 +100,7 @@ export function playerFilterHeader(playerIds: number[], season: number): Record<
 /** Remove member personal fields before anything is saved. The league JSON includes real first/last names. */
 export function scrub(obj: any): any {
   if (obj && Array.isArray(obj.members)) {
-    obj.members = obj.members.map((m: any) => ({ id: m.id, displayName: m.displayName }));
+    obj.members = obj.members.map((m: any) => ({ id: m.id, displayName: m.displayName, firstName: m.firstName }));
   }
   if (obj?.status?.creationInfo) delete obj.status.creationInfo;
   return obj;

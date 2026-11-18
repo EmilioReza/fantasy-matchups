@@ -21,13 +21,13 @@ export function TeamLogo({ team, size = 36 }: { team: Team | undefined; size?: n
 /** First word of a team name: "Capture the Flagg" → "Capture". */
 export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? '';
 
-/** "62% Capture" on the home side, "Sengooners 38%" on the away side; full name on hover. */
+/** "62% Emilio" on the home side, "Mhyank 38%" on the away side: the manager's first name, team name on hover. */
 export function WinPct({ team, p, side }: { team: Team | undefined; p: number; side: 'home' | 'away' }) {
   const full = team?.name ?? '';
-  const name = firstName(full);
+  const name = team?.owner || firstName(full);
   const num = <strong class="wp-num">{pct(p)}</strong>;
   return (
-    <span class={`wp wp-${side} c-${side}`} title={`${full}: ${pct(p)} to win`}>
+    <span class={`wp wp-${side} c-${side}`} title={`${name} (${full}): ${pct(p)} to win`}>
       {side === 'home' ? <>{num}<span class="wp-name">{name}</span></> : <><span class="wp-name">{name}</span>{num}</>}
     </span>
   );
@@ -51,3 +51,19 @@ export function StatusChip({ status }: { status: string }) {
 
 export const record = (t: Team) =>
   `${t.record.wins}-${t.record.losses}${t.record.ties ? `-${t.record.ties}` : ''}`;
+
+/** ESPN headshot (fantasy player ids are ESPN ids). Hidden if ESPN has none. */
+export function Headshot({ playerId }: { playerId: number }) {
+  return (
+    <img
+      class="headshot"
+      src={`https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${playerId}.png&w=96&h=70&cb=1`}
+      alt=""
+      width={36}
+      height={26}
+      loading="lazy"
+      decoding="async"
+      onError={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = 'hidden')}
+    />
+  );
+}

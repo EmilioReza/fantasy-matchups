@@ -123,15 +123,18 @@ export interface ParsedTeam {
   roster: { playerId: number; slotId: number }[];
 }
 
-export function parseTeams(league: Json): ParsedTeam[] {
-  const members = new Map<string, string>((league.members ?? []).map((m: Json) => [m.id, m.displayName]));
+/** owner is the manager's first name (or a configured override), falling back to the ESPN display name. */
+export function parseTeams(league: Json, managerNames: Record<string, string> = {}): ParsedTeam[] {
+  const members = new Map<string, string>(
+    (league.members ?? []).map((m: Json) => [m.id, (m.firstName ?? '').trim() || m.displayName]),
+  );
   return league.teams.map((t: Json) => {
     const o = t.record?.overall ?? {};
     return {
       teamId: t.id,
       name: t.name ?? `${t.location ?? ''} ${t.nickname ?? ''}`.trim(),
       abbrev: t.abbrev,
-      owner: members.get(t.primaryOwner) ?? '',
+      owner: managerNames[String(t.id)] ?? members.get(t.primaryOwner) ?? '',
       logo: t.logo ?? null,
       record: {
         wins: o.wins ?? 0,

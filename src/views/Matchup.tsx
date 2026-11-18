@@ -10,7 +10,7 @@ import {
   type MatchupOverrides,
 } from '../lib/overrides.ts';
 import type { LineupRow, Matchup, Week } from '../lib/types.ts';
-import { StatusChip, TeamLogo, WinBar, WinPct } from './common.tsx';
+import { Headshot, StatusChip, TeamLogo, WinBar, WinPct } from './common.tsx';
 
 type FpgSource = 'season' | 'last15';
 const FPG_KEY = 'fmp:fpgSource';
@@ -184,7 +184,7 @@ function BoxScore(props: {
     });
     return { sum, bench, est };
   });
-  const benchTotal = round1(calc.rows.reduce((a, r, i) => a + (calc.sims[i].starter ? 0 : weekPoints(r)), 0));
+  const benchTotal = round1(dayTotals.reduce((a, t) => a + t.bench, 0));
 
   return (
     <section class={`card box box-${side}`} aria-labelledby={headId}>
@@ -225,9 +225,11 @@ function BoxScore(props: {
               const gShown = o.gamesLeft != null ? used + o.gamesLeft : r.gamesThisPeriod;
               const left = s.remaining.filter((g) => g.fixed != null || g.p > 0).length;
               const rowProj = s.actual + expectedRemaining(s);
+              // Past weeks have no "current" lineup: a row started if it held a starting slot on any day.
+              const started = week.status === 'final' ? Object.values(r.dailyStarter).some(Boolean) : s.starter;
               const offRoster = Object.values(r.dailyStatus).every((x) => x === 'not_rostered' || x === 'no_game') && !r.starter && r.remaining.length === 0 && r.actual === 0;
               return (
-                <tr class={`${s.starter ? 'is-starter' : 'is-bench'} ${offRoster ? 'is-off' : ''}`}>
+                <tr class={`${started ? 'is-starter' : 'is-bench'} ${offRoster ? 'is-off' : ''}`}>
                   <td class="col-start">
                     {editable ? (
                       <span class={`inp-wrap ${o.starter !== undefined ? 'edited' : ''}`}>
@@ -243,14 +245,19 @@ function BoxScore(props: {
                         />
                       </span>
                     ) : (
-                      <span class="slot-tag">{s.starter ? '✓' : ''}</span>
+                      <span class="slot-tag">{started ? '✓' : ''}</span>
                     )}
                   </td>
                   <th scope="row" class="col-player">
-                    <span class="pl-name">{name}</span>
-                    <span class="pl-meta">
-                      <span class="slot-tag">{r.slot}</span> {p?.proTeam ?? ''}
-                      {p && <StatusChip status={p.injuryStatus} />}
+                    <span class="pl">
+                      <Headshot playerId={r.playerId} />
+                      <span class="pl-text">
+                        <span class="pl-name">{name}</span>
+                        <span class="pl-meta">
+                          <span class="slot-tag">{r.slot}</span> {p?.proTeam ?? ''}
+                          {p && <StatusChip status={p.injuryStatus} />}
+                        </span>
+                      </span>
                     </span>
                   </th>
                   <td class="num">
@@ -308,14 +315,14 @@ function BoxScore(props: {
                     );
                   })}
                   <td class="num">
-                    {s.starter ? (
+                    {started ? (
                       <span class="strong">{fmt0(s.actual)}</span>
                     ) : (
                       <span class="muted" title="On bench: not counted">{fmt0(weekPoints(r))}</span>
                     )}
                   </td>
                   <td class="num proj-cell">
-                    {s.starter ? <span class="strong">{fmt1(rowProj)}</span> : <span class="muted">–</span>}
+                    {started ? <span class="strong">{fmt1(rowProj)}</span> : <span class="muted">–</span>}
                     <span class="n-left">{left} left</span>
                   </td>
                 </tr>

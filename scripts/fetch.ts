@@ -33,6 +33,13 @@ async function main() {
   }
 
   const playerIds = new Set<number>(league.teams.flatMap((t: any) => t.roster.entries.map((e: any) => e.playerId)));
+  // Players from frozen weeks too, so someone dropped since then still has a name.
+  for (let mp = 1; mp <= settings.currentMatchupPeriod; mp++) {
+    const f = join(WEEKS_DIR, `${mp}.json`);
+    if (!existsSync(f)) continue;
+    for (const m of JSON.parse(readFileSync(f, 'utf8')).matchups ?? [])
+      for (const rows of Object.values<any[]>(m.lineups ?? {})) for (const r of rows) playerIds.add(r.playerId);
+  }
   for (const sp of [...sps].sort((a, b) => a - b)) {
     const day: any = await espnGet(leaguePath(cfg, ['mRoster'], `&scoringPeriodId=${sp}`));
     for (const t of day.teams) for (const e of t.roster?.entries ?? []) playerIds.add(e.playerId);
