@@ -3,7 +3,7 @@ import type { Core } from '../data.ts';
 import { loadWeek } from '../data.ts';
 import { dayLabel, fmt0, fmt1, pct, shortRange } from '../format.ts';
 import {
-  MODEL, expectedRemaining, matchupSeed, projectTeam, round1, toSimPlayer, winProbability, type SimPlayer,
+  MODEL, expectedRemaining, matchupSeed, projectTeam, round1, toSimPlayer, weekPoints, winProbability, type SimPlayer,
 } from '../lib/model.ts';
 import {
   clearOverrides, loadOverrides, overrideKey, readKey, saveOverrides, setDay, setField, writeKey,
@@ -159,14 +159,19 @@ function BoxScore(props: {
   const team = core.teams.get(calc.teamId)!;
   const finalSet = new Set(week.finalDates);
   const headId = `box-${calc.teamId}`;
+  // Weekly lineups: a starter toggle applies to every day of the period, played days included.
+  const counts = (r: LineupRow, i: number, d: string) =>
+    ov[r.playerId]?.starter !== undefined ? calc.sims[i].starter : !!r.dailyStarter[d];
 
   const dayTotals = week.dates.map((d) => {
     let sum = 0;
+    let bench = 0;
     let est = false;
     calc.rows.forEach((r, i) => {
       const s = calc.sims[i];
       if (finalSet.has(d)) {
-        if (r.dailyStarter[d]) sum += r.daily[d] ?? 0;
+        if (counts(r, i, d)) sum += r.daily[d] ?? 0;
+        else bench += r.daily[d] ?? 0;
       } else if (s.starter) {
         const fixed = ov[r.playerId]?.days?.[d];
         const g = r.remaining.find((x) => x.date === d);
@@ -177,8 +182,9 @@ function BoxScore(props: {
         }
       }
     });
-    return { sum, est };
+    return { sum, bench, est };
   });
+  const benchTotal = round1(calc.rows.reduce((a, r, i) => a + (calc.sims[i].starter ? 0 : weekPoints(r)), 0));
 
   return (
     <section class={`card box box-${side}`} aria-labelledby={headId}>
@@ -277,7 +283,7 @@ function BoxScore(props: {
                   {week.dates.map((d) => {
                     const st = r.dailyStatus[d];
                     if (finalSet.has(d)) {
-                      const counted = r.dailyStarter[d];
+                      const counted = counts(r, i, d);
                       if (st === 'played') return <td class={`num day-cell locked ${counted ? '' : 'not-counted'}`} title={counted ? undefined : 'On bench: not counted'}>{fmt0(r.daily[d] ?? 0)}</td>;
                       if (st === 'dnp') return <td class="num day-cell locked dnp" title="DNP">0</td>;
                       if (st === 'not_rostered') return <td class="num day-cell locked off" title="Not on this roster"></td>;
@@ -301,7 +307,13 @@ function BoxScore(props: {
                       </td>
                     );
                   })}
-                  <td class="num strong">{fmt0(r.actual)}</td>
+                  <td class="num">
+                    {s.starter ? (
+                      <span class="strong">{fmt0(s.actual)}</span>
+                    ) : (
+                      <span class="muted" title="On bench: not counted">{fmt0(weekPoints(r))}</span>
+                    )}
+                  </td>
                   <td class="num proj-cell">
                     {s.starter ? <span class="strong">{fmt1(rowProj)}</span> : <span class="muted">–</span>}
                     <span class="n-left">{left} left</span>
@@ -323,6 +335,17 @@ function BoxScore(props: {
               ))}
               <td class="num strong">{fmt0(calc.proj.actual)}</td>
               <td class={`num strong c-${side}`}>{fmt1(calc.proj.projected)}</td>
+            </tr>
+            <tr class="bench-total" title="Bench points: not counted">
+              <td />
+              <th scope="row" class="col-player">Bench <span class="small">(not counted)</span></th>
+              <td />
+              <td />
+              {dayTotals.map((t, i) => (
+                <td class="num">{finalSet.has(week.dates[i]) && t.bench ? fmt0(t.bench) : ''}</td>
+              ))}
+              <td class="num">{fmt0(benchTotal)}</td>
+              <td />
             </tr>
           </tfoot>
         </table>

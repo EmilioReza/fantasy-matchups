@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseFpg, playProbability, projectTeam, toSimPlayer, winProbability, type SimPlayer } from '../src/lib/model.ts';
+import { chooseFpg, playProbability, projectTeam, toSimPlayer, weekPoints, winProbability, type SimPlayer } from '../src/lib/model.ts';
 import type { LineupRow } from '../src/lib/types.ts';
 
 const games = (n: number, p = 1) => Array.from({ length: n }, () => ({ p, fixed: null }));
@@ -43,6 +43,16 @@ describe('projection', () => {
     const sp = toSimPlayer(row, { gamesLeft: 3 });
     expect(sp.remaining).toHaveLength(3);
     expect(projectTeam([sp]).projected).toBeCloseTo(3 * 0.95 * 30, 1);
+  });
+  it('starter swaps count the whole week, already-played days included (weekly lineups)', () => {
+    const base = { slot: 'PG', fpg: 30, sd: null, gamesThisPeriod: 2, dailyStatus: {}, remaining: [] };
+    const bench: LineupRow = { ...base, playerId: 1, starter: false, daily: { '2026-11-16': 41, '2026-11-17': 12, '2026-11-18': null }, dailyStarter: { '2026-11-16': false, '2026-11-17': false }, actual: 0 };
+    const starter: LineupRow = { ...base, playerId: 2, starter: true, daily: { '2026-11-16': 20 }, dailyStarter: { '2026-11-16': true }, actual: 20 };
+    expect(weekPoints(bench)).toBe(53);
+    expect(toSimPlayer(bench, { starter: true }).actual).toBe(53);
+    expect(toSimPlayer(bench, undefined).actual).toBe(0);
+    expect(toSimPlayer(starter, { starter: false }).actual).toBe(0);
+    expect(projectTeam([toSimPlayer(bench, { starter: true }), toSimPlayer(starter, { starter: false })]).actual).toBe(53);
   });
 });
 

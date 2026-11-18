@@ -116,6 +116,7 @@ select, .btn { font: inherit; color: var(--fg); background: var(--surface); bord
 .box-table td.num, .box-table th.num { text-align: right; }
 .box-table thead th { font-size: 11.5px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; background: var(--surface-2); }
 .box-table tfoot th, .box-table tfoot td { border-bottom: 0; border-top: 2px solid var(--line); background: var(--surface-2); }
+.box-table tfoot tr.bench-total th, .box-table tfoot tr.bench-total td { border-top: 1px solid var(--line); color: var(--muted); font-weight: 400; }
 .col-player { position: sticky; left: 0; background: var(--surface); z-index: 1; min-width: 150px; font-weight: 400; }
 thead .col-player, tfoot .col-player { background: var(--surface-2); }
 .col-start { width: 44px; text-align: center !important; }

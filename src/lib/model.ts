@@ -91,6 +91,21 @@ export interface RowOverride {
   days?: Record<string, number>;
 }
 
+/** Every point the player has scored this period, in or out of the lineup. */
+export function weekPoints(row: Pick<LineupRow, 'daily'>): number {
+  return round1(Object.values(row.daily).reduce<number>((a, v) => a + (v ?? 0), 0));
+}
+
+/**
+ * Lineups lock weekly: once a player's first game is played, their slot holds for the whole period.
+ * So a what-if starter toggle is for the whole week: swapped in counts everything they have scored,
+ * swapped out counts nothing. Untouched rows keep ESPN's official actual.
+ */
+export function actualFor(row: LineupRow, starterOverride: boolean | undefined): number {
+  if (starterOverride === undefined || starterOverride === row.starter) return row.actual;
+  return starterOverride ? weekPoints(row) : 0;
+}
+
 export function toSimPlayer(row: LineupRow, ov: RowOverride | undefined, fpgBase?: number, cfg: ModelConfig = MODEL): SimPlayer {
   const fpg = ov?.fpg ?? fpgBase ?? row.fpg;
   const days = ov?.days ?? {};
@@ -109,7 +124,7 @@ export function toSimPlayer(row: LineupRow, ov: RowOverride | undefined, fpgBase
     starter: ov?.starter ?? row.starter,
     fpg,
     sd: effectiveSd(row.sd, fpg, cfg),
-    actual: row.actual,
+    actual: actualFor(row, ov?.starter),
     remaining,
   };
 }
