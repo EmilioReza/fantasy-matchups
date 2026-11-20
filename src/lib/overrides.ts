@@ -70,6 +70,7 @@ export function pruneOverrides(ov: MatchupOverrides): MatchupOverrides {
   const out: MatchupOverrides = {};
   for (const [pid, o] of Object.entries(ov)) {
     const r: RowOverride = {};
+    if (o.addTo !== undefined) r.addTo = o.addTo;
     if (o.starter !== undefined) r.starter = o.starter;
     if (o.fpg !== undefined && Number.isFinite(o.fpg)) r.fpg = o.fpg;
     if (o.gamesLeft !== undefined && Number.isFinite(o.gamesLeft)) r.gamesLeft = o.gamesLeft;
@@ -102,4 +103,12 @@ export function setDay(ov: MatchupOverrides, playerId: number, date: string, val
   else days[date] = value;
   cur.days = days;
   return pruneOverrides({ ...ov, [playerId]: cur });
+}
+
+/** Add a free agent to a team's what-if lineup, or remove one (teamId null). */
+export function setPickup(ov: MatchupOverrides, playerId: number, teamId: number | null): MatchupOverrides {
+  const next = { ...ov };
+  if (teamId == null) delete next[playerId];
+  else next[playerId] = { addTo: teamId };
+  return pruneOverrides(next);
 }

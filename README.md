@@ -50,6 +50,13 @@ signed-in ESPN account, so they download only when the `ESPN_S2` and `ESPN_SWID`
 without them those teams show their abbreviation. Once a logo has been saved it stays, even if the
 cookies later expire.
 
+## Future weeks and pickups
+
+Every scheduled week is published. Upcoming weeks are projected from today's rosters and starters,
+so they change as rosters do. The job also saves the 150 most-owned free agents and waiver players
+(`public/data/freeagents.json`), and the matchup page can add any of them to a team's what-if
+lineup, using their pro team's remaining games that week.
+
 ## Manager names
 
 Win percentages show each manager's first name from ESPN. To show a different name, add it to

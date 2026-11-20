@@ -13,6 +13,7 @@ export function validateAll(): string[] {
     ['meta', join(DATA_DIR, 'meta.json')],
     ['teams', join(DATA_DIR, 'teams.json')],
     ['players', join(DATA_DIR, 'players.json')],
+    ['players', join(DATA_DIR, 'freeagents.json')],
     ['schedule', join(DATA_DIR, 'schedule.json')],
     ...readdirSync(WEEKS_DIR).map((f) => ['week', join(WEEKS_DIR, f)] as [string, string]),
   ];

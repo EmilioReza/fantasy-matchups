@@ -21,19 +21,28 @@ export const loadMeta = () => load<Meta>('meta.json');
 export const loadTeams = () => load<Team[]>('teams.json');
 export const loadPlayers = () => load<Player[]>('players.json');
 export const loadSchedule = () => load<Schedule>('schedule.json');
+export const loadFreeAgents = () => load<Player[]>('freeagents.json').catch(() => [] as Player[]);
 export const loadWeek = (p: number) => load<Week>(`weeks/${p}.json`);
 
 export interface Core {
   meta: Meta;
   teams: Map<number, Team>;
+  /** Rostered and recently rostered players, plus free agents (for what-if pickups). */
   players: Map<number, Player>;
+  /** Free agents, best FP/G first. */
+  freeAgents: Player[];
+  schedule: Schedule;
 }
 
 export async function loadCore(): Promise<Core> {
-  const [meta, teams, players] = await Promise.all([loadMeta(), loadTeams(), loadPlayers()]);
+  const [meta, teams, players, freeAgents, schedule] = await Promise.all([
+    loadMeta(), loadTeams(), loadPlayers(), loadFreeAgents(), loadSchedule(),
+  ]);
   return {
     meta,
     teams: new Map(teams.map((t) => [t.teamId, t])),
-    players: new Map(players.map((p) => [p.playerId, p])),
+    players: new Map([...freeAgents, ...players].map((p) => [p.playerId, p])),
+    freeAgents,
+    schedule,
   };
 }

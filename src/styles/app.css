@@ -177,3 +177,11 @@ article > .card { margin-top: 14px; overflow: hidden; }
   .controls .field { flex: 1; min-width: 0; }
   .controls select { width: 100%; }
 }
+
+/* What-if pickups */
+.pickup { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--line); }
+.pickup-field { flex: 1 1 200px; }
+.pickup-field input, .pickup select { width: 100%; min-height: 34px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); font: inherit; }
+.pickup select { flex: 2 1 260px; width: auto; max-width: 100%; }
+.pl-remove { margin-left: 6px; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--muted); font: inherit; line-height: 1.3; cursor: pointer; }
+.pl-remove:hover { color: var(--fg); }

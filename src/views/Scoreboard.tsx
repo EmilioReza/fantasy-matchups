@@ -20,7 +20,7 @@ export function useMyTeam(): [number | null, (id: number | null) => void] {
   return [id, set];
 }
 
-function SideRow({ core, side, final, win }: { core: Core; side: Side; final: boolean; win: boolean }) {
+function SideRow({ core, side, final, win, upcoming }: { core: Core; side: Side; final: boolean; win: boolean; upcoming: boolean }) {
   const team = core.teams.get(side.teamId);
   return (
     <div class={`card-side ${final && win ? 'is-winner' : ''}`}>
@@ -34,7 +34,7 @@ function SideRow({ core, side, final, win }: { core: Core; side: Side; final: bo
       </div>
       <div class="card-nums">
         <span class="card-proj num">{final ? fmt0(side.actual) : fmt1(side.projected)}</span>
-        <span class="card-actual num">{final ? (win ? 'Final · W' : 'Final') : `${fmt0(side.actual)} so far`}</span>
+        <span class="card-actual num">{final ? (win ? 'Final · W' : 'Final') : upcoming ? 'Projected' : `${fmt0(side.actual)} so far`}</span>
       </div>
     </div>
   );
@@ -48,8 +48,8 @@ function MatchupCard({ core, week, m, mine }: { core: Core; week: Week; m: Match
   return (
     <a class={`card matchup-card ${mine ? 'is-mine' : ''}`} href={`#/week/${week.matchupPeriod}/matchup/${m.matchupId}`}>
       {mine && <span class="mine-tag">My team</span>}
-      <SideRow core={core} side={m.home} final={final} win={m.winner === 'HOME'} />
-      <SideRow core={core} side={m.away} final={final} win={m.winner === 'AWAY'} />
+      <SideRow core={core} side={m.home} final={final} win={m.winner === 'HOME'} upcoming={week.status === 'upcoming'} />
+      <SideRow core={core} side={m.away} final={final} win={m.winner === 'AWAY'} upcoming={week.status === 'upcoming'} />
       {!final && (
         <div class="card-foot">
           <div class="card-wp num">
@@ -91,7 +91,7 @@ export function Scoreboard({ core, period }: { core: Core; period: number }) {
           <p class="muted">
             {week && shortRange(week.dates)}
             {week && ' · '}
-            {week?.status === 'final' ? 'Final' : week?.status === 'upcoming' ? 'Upcoming' : week ? 'In progress · closest projected first' : ''}
+            {week?.status === 'final' ? 'Final' : week?.status === 'upcoming' ? 'Upcoming · projected from today\'s rosters and lineups' : week ? 'In progress · closest projected first' : ''}
           </p>
         </div>
         <div class="controls">
@@ -101,7 +101,7 @@ export function Scoreboard({ core, period }: { core: Core; period: number }) {
               {periods.map((p) => (
                 <option value={p}>
                   Week {p}
-                  {p === core.meta.currentMatchupPeriod ? ' (current)' : ''}
+                  {p === core.meta.currentMatchupPeriod ? ' (current)' : p > core.meta.currentMatchupPeriod ? ' (upcoming)' : ''}
                 </option>
               ))}
             </select>

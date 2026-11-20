@@ -89,6 +89,8 @@ export interface RowOverride {
   fpg?: number;
   gamesLeft?: number;
   days?: Record<string, number>;
+  /** What-if pickup: a free agent added to this team's lineup. */
+  addTo?: number;
 }
 
 /** Every point the player has scored this period, in or out of the lineup. */

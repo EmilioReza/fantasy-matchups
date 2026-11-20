@@ -1,7 +1,7 @@
 // Nightly fetch: pull every ESPN view we need into RAW_DIR (a temp folder, never committed).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { AuthError, espnGet, leaguePath, loadLeagueConfig, playerFilterHeader, scrub, seasonPath } from './espn-client.ts';
+import { AuthError, espnGet, freeAgentFilterHeader, leaguePath, loadLeagueConfig, playerFilterHeader, scrub, seasonPath } from './espn-client.ts';
 import { RAW_DIR, WEEKS_DIR, ensureDir } from './paths.ts';
 import { matchupPeriodScoringPeriods, parseProSchedule, parseSettings, spToDate } from '../src/lib/espn.ts';
 import { zonedParts } from '../src/lib/dates.ts';
@@ -54,8 +54,11 @@ async function main() {
     players.push(...res.players);
   }
   save('players.json', { players });
+  // Most-owned free agents and waiver players, for what-if pickups.
+  const fa: any = await espnGet(leaguePath(cfg, ['kona_player_info']), freeAgentFilterHeader(150, cfg.season));
+  save('freeagents.json', { players: fa.players ?? [] });
   writeFileSync(join(RAW_DIR, 'manifest.json'), JSON.stringify({ todayET, scoringPeriods: [...sps].sort((a, b) => a - b) }));
-  console.log(`fetched league, schedule, ${sps.size} day rosters, ${players.length} players (today ET ${todayET})`);
+  console.log(`fetched league, schedule, ${sps.size} day rosters, ${players.length} players, ${fa.players?.length ?? 0} free agents (today ET ${todayET})`);
 }
 
 main().catch((e) => {

@@ -97,6 +97,23 @@ export function playerFilterHeader(playerIds: number[], season: number): Record<
   };
 }
 
+/** Filter for kona_player_info: the most-owned free agents and waiver players, with game logs. */
+export function freeAgentFilterHeader(limit: number, season: number): Record<string, string> {
+  return {
+    'X-Fantasy-Filter': JSON.stringify({
+      players: {
+        filterStatus: { value: ['FREEAGENT', 'WAIVERS'] },
+        limit,
+        sortPercOwned: { sortAsc: false, sortPriority: 1 },
+        filterStatsForTopScoringPeriodIds: {
+          value: 82,
+          additionalValue: [`00${season}`, `02${season}`, `10${season}`],
+        },
+      },
+    }),
+  };
+}
+
 /** Remove member personal fields before anything is saved. The league JSON includes real first/last names. */
 export function scrub(obj: any): any {
   if (obj && Array.isArray(obj.members)) {

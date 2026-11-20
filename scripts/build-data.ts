@@ -2,7 +2,7 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildSchedule, buildTeams, buildWeek, type BuildWarning, type DayRosters } from '../src/lib/build.ts';
-import { parseDayRoster, parseMatchups, parsePlayers, parseProSchedule, parseSettings, parseTeams, spToDate } from '../src/lib/espn.ts';
+import { modelFpg, parseDayRoster, parseMatchups, parsePlayers, parseProSchedule, parseSettings, parseTeams, spToDate } from '../src/lib/espn.ts';
 import type { Meta, Week } from '../src/lib/types.ts';
 import { loadLeagueConfig } from './espn-client.ts';
 import { DATA_DIR, RAW_DIR, WEEKS_DIR, ensureDir } from './paths.ts';
@@ -33,7 +33,9 @@ const inp = {
 
 ensureDir(WEEKS_DIR);
 const warnings: BuildWarning[] = [];
-for (let mp = 1; mp <= settings.currentMatchupPeriod; mp++) {
+// Every scheduled period: past (frozen once final), current, and future (projected from today's rosters).
+const lastPeriod = Math.max(settings.currentMatchupPeriod, ...inp.matchups.filter((m) => m.awayId != null).map((m) => m.matchupPeriod));
+for (let mp = 1; mp <= lastPeriod; mp++) {
   const f = join(WEEKS_DIR, `${mp}.json`);
   if (readJson<Week>(f)?.status === 'final') continue; // frozen
   const week = buildWeek(inp, mp, warnings);
@@ -46,6 +48,14 @@ for (const w of warnings) {
 
 writeJson(join(DATA_DIR, 'teams.json'), buildTeams(inp, settings.currentMatchupPeriod));
 writeJson(join(DATA_DIR, 'players.json'), players.map(({ proTeamId, ...p }: any) => p));
+// Free agents: anyone not on a roster today, best FP/G first.
+const rostered = new Set(inp.teams.flatMap((t) => t.roster.map((r) => r.playerId)));
+const freeAgents = existsSync(join(RAW_DIR, 'freeagents.json'))
+  ? parsePlayers(raw('freeagents.json'), cfg.season, abbrev)
+      .filter((p) => !rostered.has(p.playerId) && p.proTeam !== 'FA')
+      .sort((a, b) => modelFpg(b) - modelFpg(a))
+  : [];
+writeJson(join(DATA_DIR, 'freeagents.json'), freeAgents.map(({ proTeamId, ...p }: any) => p));
 writeJson(join(DATA_DIR, 'schedule.json'), buildSchedule(inp));
 
 const prev = readJson<Meta>(join(DATA_DIR, 'meta.json'));

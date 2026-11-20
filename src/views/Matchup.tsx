@@ -3,12 +3,13 @@ import type { Core } from '../data.ts';
 import { loadWeek } from '../data.ts';
 import { dayLabel, fmt0, fmt1, pct, shortRange } from '../format.ts';
 import {
-  MODEL, expectedRemaining, matchupSeed, projectTeam, round1, toSimPlayer, weekPoints, winProbability, type SimPlayer,
+  MODEL, chooseFpg, expectedRemaining, matchupSeed, projectTeam, round1, toSimPlayer, weekPoints, winProbability, type SimPlayer,
 } from '../lib/model.ts';
 import {
-  clearOverrides, loadOverrides, overrideKey, readKey, saveOverrides, setDay, setField, writeKey,
+  clearOverrides, loadOverrides, overrideKey, readKey, saveOverrides, setDay, setField, setPickup, writeKey,
   type MatchupOverrides,
 } from '../lib/overrides.ts';
+import { pickupRow } from '../lib/pickup.ts';
 import type { LineupRow, Matchup, Week } from '../lib/types.ts';
 import { Headshot, StatusChip, TeamLogo, WinBar, WinPct } from './common.tsx';
 
@@ -63,18 +64,23 @@ interface TeamCalc {
   proj: { actual: number; projected: number; gamesLeft: number };
 }
 
-function useMatchupCalc(core: Core, m: Matchup | undefined, ov: MatchupOverrides, src: FpgSource): TeamCalc[] {
+function useMatchupCalc(core: Core, week: Week | null, m: Matchup | undefined, ov: MatchupOverrides, src: FpgSource): TeamCalc[] {
   return useMemo(() => {
-    if (!m) return [];
+    if (!m || !week) return [];
     return [m.home.teamId, m.away.teamId].map((teamId) => {
-      const rows = m.lineups[teamId] ?? [];
+      const pickups = Object.entries(ov)
+        .filter(([, o]) => o.addTo === teamId)
+        .map(([pid]) => core.players.get(Number(pid)))
+        .filter((p) => p != null)
+        .map((p) => pickupRow(p, week, core.schedule.proTeams[p.proTeam]?.games ?? []));
+      const rows = [...(m.lineups[teamId] ?? []), ...pickups];
       const sims = rows.map((r) => {
         const base = src === 'last15' ? core.players.get(r.playerId)?.fpgLast15 ?? r.fpg : r.fpg;
         return toSimPlayer(r, ov[r.playerId], base);
       });
       return { teamId, rows, sims, proj: projectTeam(sims) };
     });
-  }, [core, m, ov, src]);
+  }, [core, week, m, ov, src]);
 }
 
 function useWinProb(m: Matchup | undefined, calc: TeamCalc[], official: boolean): { home: number; away: number } | null {
@@ -109,7 +115,7 @@ function Band({ core, calc, wp, week }: { core: Core; calc: TeamCalc[]; wp: { ho
         </div>
         <div class="band-total num">{final ? fmt0(h.proj.actual) : fmt1(h.proj.projected)}</div>
         <div class="band-sub num">
-          {final ? 'Final' : <>{fmt0(h.proj.actual)} so far · {h.proj.gamesLeft} left</>}
+          {final ? 'Final' : week.status === 'upcoming' ? <>{h.proj.gamesLeft} games</> : <>{fmt0(h.proj.actual)} so far · {h.proj.gamesLeft} left</>}
         </div>
       </div>
       <div class="band-mid">
@@ -139,7 +145,7 @@ function Band({ core, calc, wp, week }: { core: Core; calc: TeamCalc[]; wp: { ho
         </div>
         <div class="band-total num">{final ? fmt0(a.proj.actual) : fmt1(a.proj.projected)}</div>
         <div class="band-sub num">
-          {final ? 'Final' : <>{fmt0(a.proj.actual)} so far · {a.proj.gamesLeft} left</>}
+          {final ? 'Final' : week.status === 'upcoming' ? <>{a.proj.gamesLeft} games</> : <>{fmt0(a.proj.actual)} so far · {a.proj.gamesLeft} left</>}
         </div>
       </div>
     </section>
@@ -252,7 +258,12 @@ function BoxScore(props: {
                     <span class="pl">
                       <Headshot playerId={r.playerId} />
                       <span class="pl-text">
-                        <span class="pl-name">{name}</span>
+                        <span class="pl-name">
+                          {name}
+                          {o.addTo != null && (
+                            <button type="button" class="pl-remove" aria-label={`Remove ${name}`} title="Remove pickup" onClick={() => onChange(setPickup(ov, r.playerId, null))}>×</button>
+                          )}
+                        </span>
                         <span class="pl-meta">
                           <span class="slot-tag">{r.slot}</span> {p?.proTeam ?? ''}
                           {p && <StatusChip status={p.injuryStatus} />}
@@ -357,9 +368,51 @@ function BoxScore(props: {
           </tfoot>
         </table>
       </div>
+      {editable && <PickupPicker core={core} week={week} teamId={calc.teamId} ov={ov} onChange={onChange} />}
     </section>
   );
 }
+
+/** Add a free agent to this team's what-if lineup. Lists games left this week so pickups are easy to compare. */
+function PickupPicker({ core, week, teamId, ov, onChange }: { core: Core; week: Week; teamId: number; ov: MatchupOverrides; onChange: (ov: MatchupOverrides) => void }) {
+  const [q, setQ] = useState('');
+  const team = core.teams.get(teamId);
+  const open = new Set(week.dates.filter((d) => !week.finalDates.includes(d)));
+  const options = core.freeAgents
+    .filter((p) => ov[p.playerId]?.addTo == null)
+    .map((p) => ({ p, left: (core.schedule.proTeams[p.proTeam]?.games ?? []).filter((d) => open.has(d)).length }))
+    .filter(({ p }) => !q || p.name.toLowerCase().includes(q.toLowerCase()));
+  if (!core.freeAgents.length) return null;
+  return (
+    <div class="pickup">
+      <label class="field pickup-field">
+        <span>Add a free agent to {team?.name ?? 'this team'}</span>
+        <input type="search" placeholder="Search free agents" value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} aria-label="Search free agents" />
+      </label>
+      <select
+        aria-label={`Free agent to add to ${team?.name ?? 'this team'}`}
+        value=""
+        onChange={(e) => {
+          const v = Number((e.target as HTMLSelectElement).value);
+          if (v) {
+            onChange(setPickup(ov, v, teamId));
+            setQ('');
+          }
+        }}
+      >
+        <option value="">{options.length ? `Choose from ${options.length} free agents…` : 'No matches'}</option>
+        {options.map(({ p, left }) => (
+          <option value={p.playerId}>
+            {p.name} · {p.positions.join('/')} {p.proTeam} · {fmt1(chooseFpgOf(p))} FP/G · {left} G left{p.injuryStatus !== 'ACTIVE' ? ` · ${p.injuryStatus.replace(/_/g, ' ').toLowerCase()}` : ''}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+const chooseFpgOf = (p: { fpgSeason: number | null; fpgProjected: number | null; gamesPlayed: number }) =>
+  chooseFpg(p.fpgSeason, p.fpgProjected, p.gamesPlayed);
 
 export function MatchupView({ core, period, matchupId }: { core: Core; period: number; matchupId: number }) {
   const [week, setWeek] = useState<Week | null>(null);
@@ -377,7 +430,7 @@ export function MatchupView({ core, period, matchupId }: { core: Core; period: n
   const m = week?.matchups.find((x) => x.matchupId === matchupId);
   const editable = !!week && week.status !== 'final';
   const effectiveOv = editable ? ov : {};
-  const calc = useMatchupCalc(core, m, effectiveOv, editable ? src : 'season');
+  const calc = useMatchupCalc(core, week, m, effectiveOv, editable ? src : 'season');
   const hasEdits = Object.keys(effectiveOv).length > 0;
   const wp = useWinProb(m, calc, !hasEdits && src === 'season');
 
