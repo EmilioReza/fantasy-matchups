@@ -53,3 +53,22 @@ describe('buildWeek on the period-5 fixture (today = Nov 17)', () => {
     expect(Object.keys(sched.proTeams)).toHaveLength(30);
   });
 });
+
+describe('future weeks use the lineup set on ESPN', () => {
+  it('takes roster and slots from the planned lineup, not today', () => {
+    const inp = fixtureInputs();
+    const team = inp.teams[0];
+    const [benched, ...rest] = team.roster;
+    const newcomer = [...inp.players.keys()].find((id) => !inp.teams.some((t) => t.roster.some((r) => r.playerId === id)))!;
+    // Planned: first player moved to the bench (12), a new player added in a starting slot (11).
+    inp.plannedRosters = { 6: { [team.teamId]: [{ playerId: benched.playerId, slotId: 12 }, ...rest, { playerId: newcomer, slotId: 11 }] } };
+    const wk = buildWeek(inp, 6);
+    const rows = wk.matchups.flatMap((m) => m.lineups[team.teamId] ?? []);
+    expect(wk.status).toBe('upcoming');
+    expect(rows.find((r) => r.playerId === benched.playerId)?.starter).toBe(false);
+    expect(rows.find((r) => r.playerId === newcomer)?.starter).toBe(true);
+    // Other teams fall back to today's roster.
+    const other = inp.teams[1];
+    expect(wk.matchups.flatMap((m) => m.lineups[other.teamId] ?? []).length).toBe(other.roster.length);
+  });
+});

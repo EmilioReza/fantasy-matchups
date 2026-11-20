@@ -52,8 +52,8 @@ cookies later expire.
 
 ## Future weeks and pickups
 
-Every scheduled week is published. Upcoming weeks are projected from today's rosters and starters,
-so they change as rosters do. The job also saves the 150 most-owned free agents and waiver players
+Every scheduled week is published. Upcoming weeks use the roster and lineup each manager has
+already set for that week on ESPN (pending adds and drops included), read from the week's first day. The job also saves the 150 most-owned free agents and waiver players
 (`public/data/freeagents.json`), and the matchup page can add any of them to a team's what-if
 lineup, using their pro team's remaining games that week.
 

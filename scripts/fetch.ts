@@ -46,6 +46,19 @@ async function main() {
     save(`roster-sp${sp}.json`, day);
   }
 
+  // Planned lineups: ESPN keeps each team's roster and slots for future days (pending adds/drops and
+  // lineup moves included). Lineups lock weekly, so the first day of each future period is its lineup.
+  const planned: number[] = [];
+  const lastPeriod = Math.max(...(league.schedule ?? []).map((m: any) => m.matchupPeriodId ?? 0), settings.currentMatchupPeriod);
+  for (let mp = settings.currentMatchupPeriod + 1; mp <= lastPeriod; mp++) {
+    const first = matchupPeriodScoringPeriods(settings, pro.day1, mp)[0];
+    if (first == null) continue;
+    const day: any = await espnGet(leaguePath(cfg, ['mRoster'], `&scoringPeriodId=${first}`));
+    for (const t of day.teams) for (const e of t.roster?.entries ?? []) playerIds.add(e.playerId);
+    save(`plan-mp${mp}.json`, day);
+    planned.push(mp);
+  }
+
   const ids = [...playerIds];
   const players: any[] = [];
   for (let i = 0; i < ids.length; i += 150) {
@@ -57,8 +70,8 @@ async function main() {
   // Most-owned free agents and waiver players, for what-if pickups.
   const fa: any = await espnGet(leaguePath(cfg, ['kona_player_info']), freeAgentFilterHeader(150, cfg.season));
   save('freeagents.json', { players: fa.players ?? [] });
-  writeFileSync(join(RAW_DIR, 'manifest.json'), JSON.stringify({ todayET, scoringPeriods: [...sps].sort((a, b) => a - b) }));
-  console.log(`fetched league, schedule, ${sps.size} day rosters, ${players.length} players, ${fa.players?.length ?? 0} free agents (today ET ${todayET})`);
+  writeFileSync(join(RAW_DIR, 'manifest.json'), JSON.stringify({ todayET, scoringPeriods: [...sps].sort((a, b) => a - b), plannedPeriods: planned }));
+  console.log(`fetched league, schedule, ${sps.size} day rosters, ${planned.length} planned lineups, ${players.length} players, ${fa.players?.length ?? 0} free agents (today ET ${todayET})`);
 }
 
 main().catch((e) => {

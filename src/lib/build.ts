@@ -25,6 +25,8 @@ export interface BuildInputs {
   matchups: ParsedMatchup[];
   players: Map<number, Player & { proTeamId?: number }>;
   dayRosters: DayRosters;
+  /** Future periods: each team's planned roster and slots from ESPN (matchup period → teamId → entries). */
+  plannedRosters?: Record<number, Record<number, { playerId: number; slotId: number }[]>>;
   todayET: string;
   cfg?: ModelConfig;
   trials?: number;
@@ -68,7 +70,14 @@ export function buildWeek(inp: BuildInputs, mp: number, warnings: BuildWarning[]
   const finalDates = finalSps.map((sp) => spToDate(inp.pro.day1, sp));
   const periodOver = finalSps.length === sps.length;
   const starterSlots = new Set(inp.settings.starterSlotIds);
-  const current = new Map(inp.teams.map((t) => [t.teamId, new Map(t.roster.map((r) => [r.playerId, r.slotId]))]));
+  // A future period uses the lineup each manager has already set for it on ESPN, else today's.
+  const planned = finalSps.length === 0 ? inp.plannedRosters?.[mp] : undefined;
+  const current = new Map(
+    inp.teams.map((t) => {
+      const entries = planned?.[t.teamId] ?? t.roster;
+      return [t.teamId, new Map(entries.map((r) => [r.playerId, r.slotId]))];
+    }),
+  );
 
   const buildRows = (teamId: number): LineupRow[] => {
     const ids = new Set<number>();

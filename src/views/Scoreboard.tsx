@@ -91,7 +91,7 @@ export function Scoreboard({ core, period }: { core: Core; period: number }) {
           <p class="muted">
             {week && shortRange(week.dates)}
             {week && ' · '}
-            {week?.status === 'final' ? 'Final' : week?.status === 'upcoming' ? 'Upcoming · projected from today\'s rosters and lineups' : week ? 'In progress · closest projected first' : ''}
+            {week?.status === 'final' ? 'Final' : week?.status === 'upcoming' ? 'Upcoming · projected from the lineups set on ESPN' : week ? 'In progress · closest projected first' : ''}
           </p>
         </div>
         <div class="controls">

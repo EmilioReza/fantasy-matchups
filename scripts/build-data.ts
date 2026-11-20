@@ -12,7 +12,7 @@ const readJson = <T>(f: string): T | null => (existsSync(f) ? JSON.parse(readFil
 const writeJson = (f: string, data: unknown) => writeFileSync(f, JSON.stringify(data) + '\n');
 
 const cfg = loadLeagueConfig();
-const manifest = raw('manifest.json') as { todayET: string; scoringPeriods: number[] };
+const manifest = raw('manifest.json') as { todayET: string; scoringPeriods: number[]; plannedPeriods?: number[] };
 const league = raw('league.json');
 const settings = parseSettings(league);
 const pro = parseProSchedule(raw('pro-schedules.json'));
@@ -20,6 +20,10 @@ const abbrev = Object.fromEntries(Object.entries(pro.teams).map(([id, t]) => [id
 const players = parsePlayers(raw('players.json'), cfg.season, abbrev);
 const dayRosters: DayRosters = {};
 for (const sp of manifest.scoringPeriods) dayRosters[sp] = parseDayRoster(raw(`roster-sp${sp}.json`), sp);
+
+// Planned lineups for future periods (first day of each): sp key is irrelevant, only slots are used.
+const plannedRosters: Record<number, Record<number, { playerId: number; slotId: number }[]>> = {};
+for (const mp of manifest.plannedPeriods ?? []) plannedRosters[mp] = parseDayRoster(raw(`plan-mp${mp}.json`), -1);
 
 const inp = {
   settings,
@@ -29,6 +33,7 @@ const inp = {
   players: new Map(players.map((p) => [p.playerId, p])),
   dayRosters,
   todayET: manifest.todayET,
+  plannedRosters,
 };
 
 ensureDir(WEEKS_DIR);
