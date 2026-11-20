@@ -50,6 +50,10 @@ export interface Player {
   fpgLast15: number | null;
   fpgProjected: number | null;
   sdGame: number | null;
+  /** Prior FP/G: average of the player's recent games last season (≥10), else null. */
+  fpgPrior: number | null;
+  /** Single-game SD ÷ mean over the player's last 82 games (both seasons), or null with too few. */
+  cvGame: number | null;
   gamesPlayed: number;
 }
 

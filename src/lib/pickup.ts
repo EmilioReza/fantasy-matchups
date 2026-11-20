@@ -1,5 +1,5 @@
 // What-if pickups: turn a free agent into a lineup row for one week, from their pro team's schedule.
-import { MODEL, chooseFpg, playProbability, type ModelConfig } from './model.ts';
+import { MODEL, playProbability, playerFpg, playerSd, type ModelConfig } from './model.ts';
 import type { DayStatus, LineupRow, Player, Week } from './types.ts';
 
 /** Days already played count as "not on this roster"; the rest are scheduled games or off days. */
@@ -17,12 +17,13 @@ export function pickupRow(player: Player, week: Pick<Week, 'dates' | 'finalDates
       remaining.push({ date: d, p: playProbability(player.injuryStatus, player.returnDate, d, cfg) });
     } else dailyStatus[d] = 'no_game';
   }
+  const fpg = playerFpg(player, cfg);
   return {
     playerId: player.playerId,
     slot: 'FA',
     starter: true,
-    fpg: chooseFpg(player.fpgSeason, player.fpgProjected, player.gamesPlayed, cfg),
-    sd: player.sdGame,
+    fpg,
+    sd: playerSd(player, fpg),
     gamesThisPeriod: remaining.length,
     daily,
     dailyStatus,

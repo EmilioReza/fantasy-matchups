@@ -6,9 +6,11 @@
     "outAfterReturn": 0.95,
     "outNoReturn": 0
   },
-  "minGamesForSeasonAvg": 5,
+  "priorWeightGames": 8,
   "minGamesForSd": 8,
-  "sdFallbackFraction": 0.35,
+  "sdFallbackFraction": 0.47,
+  "minGamesForSpread": 15,
+  "formUncertainty": 0.1,
   "trials": 10000,
   "browserTrials": 2000,
   "browserDebounceMs": 150,

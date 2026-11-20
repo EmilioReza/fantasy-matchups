@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseFpg, playProbability, projectTeam, toSimPlayer, weekPoints, winProbability, type SimPlayer } from '../src/lib/model.ts';
+import { chooseFpg, effectiveSd, playProbability, projectTeam, toSimPlayer, weekPoints, winProbability, type SimPlayer } from '../src/lib/model.ts';
 import type { LineupRow } from '../src/lib/types.ts';
 
 const games = (n: number, p = 1) => Array.from({ length: n }, () => ({ p, fixed: null }));
@@ -15,10 +15,15 @@ describe('inputs', () => {
     expect(playProbability('OUT', '2026-11-20', '2026-11-20')).toBe(0.95);
     expect(playProbability('OUT', null, '2026-11-20')).toBe(0);
   });
-  it('blends with projection under 5 games', () => {
-    expect(chooseFpg(40, 30, 3)).toBe(35);
-    expect(chooseFpg(40, 30, 5)).toBe(40);
+  it('blends the season average with the prior, weighted like 8 games', () => {
+    expect(chooseFpg(40, 30, 8)).toBe(35);
+    expect(chooseFpg(40, 30, 24)).toBe(37.5);
     expect(chooseFpg(null, 30, 0)).toBe(30);
+    expect(chooseFpg(40, null, 3)).toBe(40);
+  });
+  it('spread follows FP/G edits', () => {
+    expect(effectiveSd(12, 40, undefined, 30)).toBe(16);
+    expect(effectiveSd(null, 40)).toBeCloseTo(0.47 * 40);
   });
 });
 
@@ -73,5 +78,13 @@ describe('win probability', () => {
     const r = winProbability(home, lineup(), 10000, 42);
     expect(r.home).toBeGreaterThan(0.85);
     expect(r.home).toBeLessThan(0.95);
+  });
+  it('week-long form swings make the same lead less certain', () => {
+    const home = lineup();
+    home[0] = { ...home[0], actual: 160 };
+    const without = winProbability(home, lineup(), 10000, 42, 0).home;
+    const withForm = winProbability(home, lineup(), 10000, 42, 0.1).home;
+    expect(withForm).toBeLessThan(without);
+    expect(withForm).toBeGreaterThan(0.7);
   });
 });

@@ -1,7 +1,7 @@
 // Parsers for raw ESPN fantasy basketball responses. Pure functions; built and tested against fixtures/.
 // Field names were confirmed against real responses; see docs/espn-api-notes.md.
 import { addDays, dayOfWeek, zonedParts } from './dates.ts';
-import { chooseFpg, gameSd, round1 } from './model.ts';
+import { gameCv, gameSd, playerFpg, round1 } from './model.ts';
 import type { Player } from './types.ts';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -224,9 +224,10 @@ export function parsePlayers(kona: Json, season: number, abbrevByProId: Record<n
     const last15 = findStat(stats, season, 2, 0);
     const proj = findStat(stats, season, 0, 1);
     const gp = seasonStat?.stats?.['42'] ?? 0;
-    const games = stats
-      .filter((s) => s.seasonId === season && s.statSplitTypeId === 5 && s.statSourceId === 0 && (s.stats?.['42'] ?? 0) >= 1)
-      .map((s) => s.appliedTotal as number);
+    const logs = stats.filter((s) => s.statSplitTypeId === 5 && s.statSourceId === 0 && (s.stats?.['42'] ?? 0) >= 1);
+    const games = logs.filter((s) => s.seasonId === season).map((s) => s.appliedTotal as number);
+    // ESPN returns the player's last 82 games, so this is the end of last season.
+    const lastSeason = logs.filter((s) => s.seasonId === season - 1).map((s) => s.appliedTotal as number);
     const rd = p.injuryDetails?.expectedReturnDate as number[] | undefined;
     const returnDate = rd && rd.length === 3 ? `${rd[0]}-${String(rd[1]).padStart(2, '0')}-${String(rd[2]).padStart(2, '0')}` : null;
     const positions = (p.eligibleSlots as number[]).filter((s) => s in POSITION_NAMES).map((s) => POSITION_NAMES[s]);
@@ -241,6 +242,8 @@ export function parsePlayers(kona: Json, season: number, abbrevByProId: Record<n
       fpgLast15: last15?.appliedAverage != null ? round1(last15.appliedAverage) : null,
       fpgProjected: proj?.appliedAverage != null ? round1(proj.appliedAverage) : null,
       sdGame: gameSd(games),
+      fpgPrior: lastSeason.length >= 10 ? round1(lastSeason.reduce((a, b) => a + b, 0) / lastSeason.length) : null,
+      cvGame: gameCv([...lastSeason, ...games]),
       gamesPlayed: gp,
       proTeamId: p.proTeamId,
     } as Player & { proTeamId: number };
@@ -248,5 +251,5 @@ export function parsePlayers(kona: Json, season: number, abbrevByProId: Record<n
 }
 
 export function modelFpg(p: Player): number {
-  return chooseFpg(p.fpgSeason, p.fpgProjected, p.gamesPlayed);
+  return playerFpg(p);
 }

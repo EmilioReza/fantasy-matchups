@@ -61,6 +61,18 @@
       },
       "gamesPlayed": {
         "type": "integer"
+      },
+      "fpgPrior": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "cvGame": {
+        "type": [
+          "number",
+          "null"
+        ]
       }
     },
     "required": [
@@ -74,7 +86,9 @@
       "fpgLast15",
       "fpgProjected",
       "sdGame",
-      "gamesPlayed"
+      "gamesPlayed",
+      "fpgPrior",
+      "cvGame"
     ],
     "additionalProperties": false
   }

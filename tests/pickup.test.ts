@@ -6,7 +6,7 @@ import type { Player } from '../src/lib/types.ts';
 
 const fa: Player = {
   playerId: 99, name: 'Free Agent', proTeam: 'BOS', positions: ['PG'], injuryStatus: 'ACTIVE', returnDate: null,
-  fpgSeason: 30, fpgLast15: 28, fpgProjected: 29, sdGame: 9, gamesPlayed: 12,
+  fpgSeason: 30, fpgLast15: 28, fpgProjected: 30, sdGame: 9, fpgPrior: null, cvGame: 0.3, gamesPlayed: 12,
 };
 const week = { dates: ['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19'], finalDates: ['2026-11-16', '2026-11-17'] };
 

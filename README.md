@@ -70,5 +70,6 @@ Actions tab.
 
 ## Tuning
 
-`config/model.json` holds play probabilities by injury status, the SD fallback (0.35 × FP/G),
-simulation trial counts and the stale threshold.
+`config/model.json` holds play probabilities by injury status, the prior weight for blending FP/G
+with last season, the SD fallback (0.47 × FP/G), the week-long form swing, simulation trial counts
+and the stale threshold. Why those values: [docs/model-backtest.md](docs/model-backtest.md).

@@ -3,7 +3,7 @@ import type { Core } from '../data.ts';
 import { loadWeek } from '../data.ts';
 import { dayLabel, fmt0, fmt1, pct, shortRange } from '../format.ts';
 import {
-  MODEL, chooseFpg, expectedRemaining, matchupSeed, projectTeam, round1, toSimPlayer, weekPoints, winProbability, type SimPlayer,
+  MODEL, expectedRemaining, playerFpg, matchupSeed, projectTeam, round1, toSimPlayer, weekPoints, winProbability, type SimPlayer,
 } from '../lib/model.ts';
 import {
   clearOverrides, loadOverrides, overrideKey, readKey, saveOverrides, setDay, setField, setPickup, writeKey,
@@ -403,16 +403,13 @@ function PickupPicker({ core, week, teamId, ov, onChange }: { core: Core; week: 
         <option value="">{options.length ? `Choose from ${options.length} free agents…` : 'No matches'}</option>
         {options.map(({ p, left }) => (
           <option value={p.playerId}>
-            {p.name} · {p.positions.join('/')} {p.proTeam} · {fmt1(chooseFpgOf(p))} FP/G · {left} G left{p.injuryStatus !== 'ACTIVE' ? ` · ${p.injuryStatus.replace(/_/g, ' ').toLowerCase()}` : ''}
+            {p.name} · {p.positions.join('/')} {p.proTeam} · {fmt1(playerFpg(p))} FP/G · {left} G left{p.injuryStatus !== 'ACTIVE' ? ` · ${p.injuryStatus.replace(/_/g, ' ').toLowerCase()}` : ''}
           </option>
         ))}
       </select>
     </div>
   );
 }
-
-const chooseFpgOf = (p: { fpgSeason: number | null; fpgProjected: number | null; gamesPlayed: number }) =>
-  chooseFpg(p.fpgSeason, p.fpgProjected, p.gamesPlayed);
 
 export function MatchupView({ core, period, matchupId }: { core: Core; period: number; matchupId: number }) {
   const [week, setWeek] = useState<Week | null>(null);
@@ -453,7 +450,7 @@ export function MatchupView({ core, period, matchupId }: { core: Core; period: n
       {editable && (
         <div class="tools">
           <div class="seg" role="group" aria-label="FP/G source">
-            <button type="button" aria-pressed={src === 'season'} onClick={() => { setSrc('season'); writeKey(FPG_KEY, null); }}>Season FP/G</button>
+            <button type="button" aria-pressed={src === 'season'} title="This season's average blended with last season's" onClick={() => { setSrc('season'); writeKey(FPG_KEY, null); }}>Season FP/G</button>
             <button type="button" aria-pressed={src === 'last15'} onClick={() => { setSrc('last15'); writeKey(FPG_KEY, 'last15'); }}>Last 15 days</button>
           </div>
           <p class="muted small hint">Toggle starters, or edit FP/G, games and future days to play out what-ifs. Edits stay in this browser.</p>

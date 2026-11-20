@@ -13,7 +13,7 @@ import {
   type ParsedTeam,
   type ProSchedule,
 } from './espn.ts';
-import { MODEL, matchupSeed, playProbability, projectTeam, round1, toSimPlayer, winProbability, type ModelConfig } from './model.ts';
+import { MODEL, matchupSeed, playProbability, playerSd, projectTeam, round1, toSimPlayer, winProbability, type ModelConfig } from './model.ts';
 import type { DayStatus, LineupRow, Matchup, Player, Schedule, Team, Week, WeekStatus } from './types.ts';
 
 export type DayRosters = Record<number, Record<number, DayEntry[]>>; // sp → teamId → entries
@@ -141,7 +141,7 @@ export function buildWeek(inp: BuildInputs, mp: number, warnings: BuildWarning[]
         slot: SLOT_NAMES[slotId] ?? String(slotId),
         starter: nowSlot !== undefined && starterSlots.has(nowSlot),
         fpg: info ? modelFpg(info) : 0,
-        sd: info?.sdGame ?? null,
+        sd: info ? playerSd(info, modelFpg(info)) : null,
         gamesThisPeriod,
         daily,
         dailyStatus,
