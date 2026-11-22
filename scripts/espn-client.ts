@@ -2,13 +2,9 @@
 // Cookies (ESPN_S2 / ESPN_SWID) are optional and are never logged or written anywhere.
 import { readFileSync } from 'node:fs';
 
-export interface LeagueConfig {
-  leagueId: number;
-  season: number;
-  timezone: string;
-  /** teamId → manager first name, when ESPN's first name is not the one the league uses. */
-  managerNames?: Record<string, string>;
-}
+import type { LeagueConfig } from '../src/lib/pipeline.ts';
+export type { LeagueConfig };
+export { freeAgentFilterHeader, leaguePath, playerFilterHeader, seasonPath } from '../src/lib/pipeline.ts';
 
 export function loadLeagueConfig(): LeagueConfig {
   return JSON.parse(readFileSync(new URL('../config/league.json', import.meta.url), 'utf8'));
@@ -69,49 +65,6 @@ export async function espnGet<T = unknown>(
   }
   // Only the path (no headers, no body) goes into the message.
   throw new Error(`ESPN fetch failed for ${path.split('?')[0]}: ${lastErr}`);
-}
-
-export function leaguePath(cfg: LeagueConfig, views: string[], extra = ''): string {
-  const q = views.map((v) => `view=${v}`).join('&');
-  return `/apis/v3/games/fba/seasons/${cfg.season}/segments/0/leagues/${cfg.leagueId}?${q}${extra}`;
-}
-
-export function seasonPath(cfg: LeagueConfig, views: string[]): string {
-  return `/apis/v3/games/fba/seasons/${cfg.season}?${views.map((v) => `view=${v}`).join('&')}`;
-}
-
-/** Filter for kona_playercard: season totals, last-15, projection, plus up to 82 single-game logs per player. */
-export function playerFilterHeader(playerIds: number[], season: number): Record<string, string> {
-  return {
-    'X-Fantasy-Filter': JSON.stringify({
-      players: {
-        filterIds: { value: playerIds },
-        limit: playerIds.length + 10,
-        sortPercOwned: { sortAsc: false, sortPriority: 1 },
-        filterStatsForTopScoringPeriodIds: {
-          value: 82,
-          additionalValue: [`00${season}`, `02${season}`, `10${season}`],
-        },
-      },
-    }),
-  };
-}
-
-/** Filter for kona_player_info: the most-owned free agents and waiver players, with game logs. */
-export function freeAgentFilterHeader(limit: number, season: number): Record<string, string> {
-  return {
-    'X-Fantasy-Filter': JSON.stringify({
-      players: {
-        filterStatus: { value: ['FREEAGENT', 'WAIVERS'] },
-        limit,
-        sortPercOwned: { sortAsc: false, sortPriority: 1 },
-        filterStatsForTopScoringPeriodIds: {
-          value: 82,
-          additionalValue: [`00${season}`, `02${season}`, `10${season}`],
-        },
-      },
-    }),
-  };
 }
 
 /** Remove member personal fields before anything is saved. The league JSON includes real first/last names. */

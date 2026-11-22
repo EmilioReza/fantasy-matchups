@@ -10,7 +10,7 @@ export function TeamView({ core, teamId }: { core: Core; teamId: number }) {
   const [week, setWeek] = useState<Week | null>(null);
   useEffect(() => {
     loadWeek(core.meta.currentMatchupPeriod).then(setWeek, () => setWeek(null));
-  }, [teamId]);
+  }, [teamId, core]);
   if (!team) return <p class="banner warn">No team {teamId}. <a href="#/">Back to scoreboard</a></p>;
 
   const m = week?.matchups.find((x) => x.home.teamId === teamId || x.away.teamId === teamId);

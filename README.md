@@ -50,6 +50,14 @@ signed-in ESPN account, so they download only when the `ESPN_S2` and `ESPN_SWID`
 without them those teams show their abbreviation. Once a logo has been saved it stays, even if the
 cookies later expire.
 
+## Refresh button
+
+The **Refresh** button in the header pulls the league straight from ESPN in the browser (ESPN allows
+this site's origin) and rebuilds the current and future weeks with the same code the nightly job runs
+(`src/lib/pipeline.ts`). Games in progress count their points so far, and only the time left is
+projected, using the clock from ESPN's public NBA scoreboard. It takes a few seconds, changes nothing
+in the repository, and lasts until the page is reloaded.
+
 ## Future weeks and pickups
 
 Every scheduled week is published. Upcoming weeks use the roster and lineup each manager has

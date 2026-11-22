@@ -17,7 +17,7 @@ h1 { font-size: 30px; line-height: 1.1; }
 main:focus { outline: none; }
 
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
-.site-header { background: var(--surface); border-bottom: 1px solid var(--line); }
+.site-header { position: relative; background: var(--surface); border-bottom: 1px solid var(--line); }
 .header-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 58px; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; min-width: 0; }
 .brand-mark { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #f08a4b, var(--away) 70%); box-shadow: inset 0 0 0 2px rgba(0,0,0,.15); flex: none; }
@@ -185,3 +185,16 @@ article > .card { margin-top: 14px; overflow: hidden; }
 .pickup select { flex: 2 1 260px; width: auto; max-width: 100%; }
 .pl-remove { margin-left: 6px; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--muted); font: inherit; line-height: 1.3; cursor: pointer; }
 .pl-remove:hover { color: var(--fg); }
+
+/* Refresh button */
+.refresh-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 10px; white-space: nowrap; }
+.refresh-btn:disabled { cursor: progress; opacity: .8; }
+.refresh-btn .spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .refresh-btn .spin { animation: none; } }
+.refresh-err { position: absolute; top: 100%; right: 16px; margin-top: 6px; max-width: 320px; padding: 8px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); font-size: 12.5px; color: var(--fg); box-shadow: 0 4px 14px rgb(0 0 0 / .12); z-index: 5; }
+.live-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: #e5484d; vertical-align: 1px; }
+td.day-cell.live { position: relative; font-weight: 600; }
+td.day-cell.live::after { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: #e5484d; }
+@media (max-width: 560px) { .refresh-btn span { display: none; } .refresh-btn { padding: 6px 9px; } }
+.link-btn { border: 0; padding: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }

@@ -1,8 +1,8 @@
 // Parse raw ESPN responses, compute points/projections/win probabilities, write public/data/.
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildSchedule, buildTeams, buildWeek, type BuildWarning, type DayRosters } from '../src/lib/build.ts';
-import { modelFpg, parseDayRoster, parseMatchups, parsePlayers, parseProSchedule, parseSettings, parseTeams, spToDate } from '../src/lib/espn.ts';
+import { spToDate } from '../src/lib/espn.ts';
+import { buildFromRaw, type RawData } from '../src/lib/pipeline.ts';
 import type { Meta, Week } from '../src/lib/types.ts';
 import { loadLeagueConfig } from './espn-client.ts';
 import { DATA_DIR, RAW_DIR, WEEKS_DIR, ensureDir } from './paths.ts';
@@ -13,56 +13,36 @@ const writeJson = (f: string, data: unknown) => writeFileSync(f, JSON.stringify(
 
 const cfg = loadLeagueConfig();
 const manifest = raw('manifest.json') as { todayET: string; scoringPeriods: number[]; plannedPeriods?: number[] };
-const league = raw('league.json');
-const settings = parseSettings(league);
-const pro = parseProSchedule(raw('pro-schedules.json'));
-const abbrev = Object.fromEntries(Object.entries(pro.teams).map(([id, t]) => [id, t.abbrev]));
-const players = parsePlayers(raw('players.json'), cfg.season, abbrev);
-const dayRosters: DayRosters = {};
-for (const sp of manifest.scoringPeriods) dayRosters[sp] = parseDayRoster(raw(`roster-sp${sp}.json`), sp);
-
-// Planned lineups for future periods (first day of each): sp key is irrelevant, only slots are used.
-const plannedRosters: Record<number, Record<number, { playerId: number; slotId: number }[]>> = {};
-for (const mp of manifest.plannedPeriods ?? []) plannedRosters[mp] = parseDayRoster(raw(`plan-mp${mp}.json`), -1);
-
-const inp = {
-  settings,
-  pro,
-  teams: parseTeams(league, cfg.managerNames),
-  matchups: parseMatchups(league),
-  players: new Map(players.map((p) => [p.playerId, p])),
-  dayRosters,
+const rawData: RawData = {
+  league: raw('league.json'),
+  pro: raw('pro-schedules.json'),
+  days: Object.fromEntries(manifest.scoringPeriods.map((sp) => [sp, raw(`roster-sp${sp}.json`)])),
+  planned: Object.fromEntries((manifest.plannedPeriods ?? []).map((mp) => [mp, raw(`plan-mp${mp}.json`)])),
+  players: raw('players.json'),
+  freeAgents: existsSync(join(RAW_DIR, 'freeagents.json')) ? raw('freeagents.json') : { players: [] },
   todayET: manifest.todayET,
-  plannedRosters,
 };
 
 ensureDir(WEEKS_DIR);
-const warnings: BuildWarning[] = [];
-// Every scheduled period: past (frozen once final), current, and future (projected from today's rosters).
-const lastPeriod = Math.max(settings.currentMatchupPeriod, ...inp.matchups.filter((m) => m.awayId != null).map((m) => m.matchupPeriod));
-for (let mp = 1; mp <= lastPeriod; mp++) {
-  const f = join(WEEKS_DIR, `${mp}.json`);
-  if (readJson<Week>(f)?.status === 'final') continue; // frozen
-  const week = buildWeek(inp, mp, warnings);
-  writeJson(f, week);
-  console.log(`week ${mp}: ${week.status}, ${week.matchups.length} matchups`);
+// Every scheduled period: past (frozen once final), current, and future (from the lineups set on ESPN).
+const built = buildFromRaw(rawData, cfg, {
+  periods: (_current, last) =>
+    Array.from({ length: last }, (_, i) => i + 1).filter((mp) => readJson<Week>(join(WEEKS_DIR, `${mp}.json`))?.status !== 'final'),
+});
+for (const week of built.weeks) {
+  writeJson(join(WEEKS_DIR, `${week.matchupPeriod}.json`), week);
+  console.log(`week ${week.matchupPeriod}: ${week.status}, ${week.matchups.length} matchups`);
 }
-for (const w of warnings) {
+for (const w of built.warnings) {
   console.warn(`::warning::period ${w.matchupPeriod} team ${w.teamId} ${w.date}: ours ${w.ours} vs ESPN ${w.espn}`);
 }
 
-writeJson(join(DATA_DIR, 'teams.json'), buildTeams(inp, settings.currentMatchupPeriod));
-writeJson(join(DATA_DIR, 'players.json'), players.map(({ proTeamId, ...p }: any) => p));
-// Free agents: anyone not on a roster today, best FP/G first.
-const rostered = new Set(inp.teams.flatMap((t) => t.roster.map((r) => r.playerId)));
-const freeAgents = existsSync(join(RAW_DIR, 'freeagents.json'))
-  ? parsePlayers(raw('freeagents.json'), cfg.season, abbrev)
-      .filter((p) => !rostered.has(p.playerId) && p.proTeam !== 'FA')
-      .sort((a, b) => modelFpg(b) - modelFpg(a))
-  : [];
-writeJson(join(DATA_DIR, 'freeagents.json'), freeAgents.map(({ proTeamId, ...p }: any) => p));
-writeJson(join(DATA_DIR, 'schedule.json'), buildSchedule(inp));
+writeJson(join(DATA_DIR, 'teams.json'), built.teams);
+writeJson(join(DATA_DIR, 'players.json'), built.players);
+writeJson(join(DATA_DIR, 'freeagents.json'), built.freeAgents);
+writeJson(join(DATA_DIR, 'schedule.json'), built.schedule);
 
+const settings = built.settings;
 const prev = readJson<Meta>(join(DATA_DIR, 'meta.json'));
 const kind = process.env.RUN_KIND ?? 'manual';
 const chicagoDate = process.env.CHICAGO_DATE ?? null;
@@ -87,4 +67,4 @@ const meta: Meta = {
   lastSettleChicagoDate: kind === 'run5' ? chicagoDate : prev?.lastSettleChicagoDate ?? null,
 };
 writeJson(join(DATA_DIR, 'meta.json'), meta);
-console.log(`wrote data for "${meta.leagueName}" period ${meta.currentMatchupPeriod} (${spToDate(pro.day1, 1)} season start)`);
+console.log(`wrote data for "${meta.leagueName}" period ${meta.currentMatchupPeriod} (${spToDate(built.pro.day1, 1)} season start)`);

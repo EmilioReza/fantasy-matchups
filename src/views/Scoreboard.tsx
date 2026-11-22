@@ -72,7 +72,7 @@ export function Scoreboard({ core, period }: { core: Core; period: number }) {
     setWeek(null);
     setErr(null);
     loadWeek(period).then(setWeek, (e) => setErr(e.message));
-  }, [period]);
+  }, [period, core]);
 
   const periods = core.meta.matchupPeriods;
   const sorted = week

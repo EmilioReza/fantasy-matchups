@@ -18,6 +18,12 @@ import type { DayStatus, LineupRow, Matchup, Player, Schedule, Team, Week, WeekS
 
 export type DayRosters = Record<number, Record<number, DayEntry[]>>; // sp → teamId → entries
 
+/** Today's NBA games while they are being played: state and share of each game left, by pro team id. */
+export interface LiveDay {
+  date: string;
+  byProTeam: Record<number, { state: 'pre' | 'in' | 'post'; left: number }>;
+}
+
 export interface BuildInputs {
   settings: LeagueSettings;
   pro: ProSchedule;
@@ -28,6 +34,8 @@ export interface BuildInputs {
   /** Future periods: each team's planned roster and slots from ESPN (matchup period → teamId → entries). */
   plannedRosters?: Record<number, Record<number, { playerId: number; slotId: number }[]>>;
   todayET: string;
+  /** When set (Refresh button), today's games count their points so far; needs today's day roster. */
+  live?: LiveDay;
   cfg?: ModelConfig;
   trials?: number;
 }
@@ -124,6 +132,33 @@ export function buildWeek(inp: BuildInputs, mp: number, warnings: BuildWarning[]
             if (starting && e.points != null) actual += e.points;
           }
           dailyStatus[date] = st;
+        } else if (inp.live?.date === date && inp.dayRosters[sp] && hasGame) {
+          // Today, live: points so far count; only the part of the game still to play is projected.
+          const e = inp.dayRosters[sp][teamId]?.find((x) => x.playerId === pid);
+          const g = proId != null ? inp.live.byProTeam[proId] : undefined;
+          if (!e) {
+            daily[date] = null;
+            dailyStatus[date] = 'not_rostered';
+          } else {
+            lastSlot ??= e.slotId;
+            const starting = starterSlots.has(e.slotId);
+            dailyStarter[date] = starting;
+            gamesThisPeriod++;
+            if (g?.state === 'post') {
+              daily[date] = e.points ?? 0;
+              dailyStatus[date] = e.points != null ? 'played' : 'dnp';
+            } else if (g?.state === 'in') {
+              daily[date] = e.points ?? 0;
+              dailyStatus[date] = 'live';
+              const p = e.points != null ? 1 : playProbability(info?.injuryStatus, info?.returnDate ?? null, date, cfg);
+              if (g.left > 0) remaining.push({ date, p, scale: Math.round(g.left * 1000) / 1000 });
+            } else {
+              daily[date] = null;
+              dailyStatus[date] = 'scheduled';
+              remaining.push({ date, p: playProbability(info?.injuryStatus, info?.returnDate ?? null, date, cfg) });
+            }
+            if (starting && e.points != null) actual += e.points;
+          }
         } else {
           daily[date] = null;
           if (nowSlot === undefined) dailyStatus[date] = 'not_rostered';

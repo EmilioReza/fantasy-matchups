@@ -97,6 +97,8 @@ export function effectiveSd(sd: number | null, fpg: number, cfg: ModelConfig = M
 
 export interface SimGame {
   p: number;
+  /** Share of the game still to play (1 unless the game is live). */
+  scale?: number;
   /** Points the viewer typed for this day; replaces the random draw. */
   fixed: number | null;
 }
@@ -139,6 +141,7 @@ export function toSimPlayer(row: LineupRow, ov: RowOverride | undefined, fpgBase
   const days = ov?.days ?? {};
   let remaining: SimGame[] = row.remaining.map((g: RemainingGame) => ({
     p: g.p,
+    scale: g.scale,
     fixed: days[g.date] ?? null,
   }));
   if (ov?.gamesLeft != null) {
@@ -161,7 +164,7 @@ export function toSimPlayer(row: LineupRow, ov: RowOverride | undefined, fpgBase
 
 export function expectedRemaining(pl: SimPlayer): number {
   if (!pl.starter) return 0;
-  return pl.remaining.reduce((a, g) => a + (g.fixed ?? g.p * pl.fpg), 0);
+  return pl.remaining.reduce((a, g) => a + (g.fixed ?? g.p * pl.fpg * (g.scale ?? 1)), 0);
 }
 
 /** Proj = Actual + Σ starters Σ games left p·FPG. Actual always counts (it is official). */
@@ -213,7 +216,10 @@ function simTotal(players: SimPlayer[], rand: () => number, form: number): numbe
     const level = form > 0 ? pl.fpg * Math.max(0, 1 + form * normal(rand)) : pl.fpg;
     for (const g of pl.remaining) {
       if (g.fixed != null) total += g.fixed;
-      else if (rand() < g.p) total += level + pl.sd * normal(rand);
+      else if (rand() < g.p) {
+        const s = g.scale ?? 1;
+        total += level * s + pl.sd * Math.sqrt(s) * normal(rand);
+      }
     }
   }
   return total;

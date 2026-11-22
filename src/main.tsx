@@ -3,6 +3,7 @@ import { useEffect, useState } from 'preact/hooks';
 import './styles/tokens.css';
 import './styles/app.css';
 import { loadCore, type Core } from './data.ts';
+import { liveRefresh } from './live.ts';
 import { asOf } from './format.ts';
 import { MODEL } from './lib/model.ts';
 import { readKey, writeKey } from './lib/overrides.ts';
@@ -57,7 +58,45 @@ function ThemeToggle() {
   );
 }
 
-function Header({ core }: { core: Core | null }) {
+/** Pulls fresh points, lineups and injuries straight from ESPN. */
+function RefreshButton({ core, onDone }: { core: Core; onDone: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const run = async () => {
+    setBusy('Refreshing…');
+    setErr(null);
+    try {
+      await liveRefresh(core, (d, t) => setBusy(`Refreshing… ${Math.min(100, Math.round((d / t) * 100))}%`));
+      onDone();
+    } catch (e) {
+      setErr(`Couldn't refresh from ESPN (${(e as Error).message}). Showing the last saved data.`);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <>
+      <button class="btn refresh-btn" type="button" onClick={run} disabled={!!busy} aria-live="polite" title="Get the latest points, lineups and injuries from ESPN">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" class={busy ? 'spin' : ''}>
+          <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>{busy ?? 'Refresh'}</span>
+      </button>
+      {err && <RefreshError msg={err} onClose={() => setErr(null)} />}
+    </>
+  );
+}
+
+function RefreshError({ msg, onClose }: { msg: string; onClose: () => void }) {
+  return (
+    <div class="refresh-err" role="alert">
+      {msg}{' '}
+      <button type="button" class="link-btn" onClick={onClose}>Dismiss</button>
+    </div>
+  );
+}
+
+function Header({ core, onRefreshed }: { core: Core | null; onRefreshed: () => void }) {
   const generated = core?.meta.generatedAt;
   const ageH = generated ? (Date.now() - Date.parse(generated)) / 3_600_000 : 0;
   return (
@@ -74,9 +113,11 @@ function Header({ core }: { core: Core | null }) {
           <div class="header-right">
             {generated && (
               <span class="asof">
-                Data as of <time dateTime={generated}>{asOf(generated)}</time>
+                {core?.meta.liveAt ? <><span class="live-dot" aria-hidden="true" />Live as of </> : 'Data as of '}
+                <time dateTime={generated}>{asOf(generated)}</time>
               </span>
             )}
+            {core && <RefreshButton core={core} onDone={onRefreshed} />}
             <ThemeToggle />
           </div>
         </div>
@@ -99,6 +140,7 @@ function App() {
   useEffect(() => {
     loadCore().then(setCore, (e) => setError(String(e.message ?? e)));
   }, []);
+  const reload = () => loadCore().then(setCore, (e) => setError(String(e.message ?? e)));
 
   let body;
   if (error) body = <p class="banner warn">Couldn't load league data: {error}</p>;
@@ -110,7 +152,7 @@ function App() {
   return (
     <>
       <a class="skip" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}>Skip to content</a>
-      <Header core={core} />
+      <Header core={core} onRefreshed={reload} />
       <main id="main" tabIndex={-1} class="wrap">{body}</main>
       <footer class="wrap site-footer">
         Points from ESPN. Projections: points so far + Σ play probability × FP/G for games left. Win probability from

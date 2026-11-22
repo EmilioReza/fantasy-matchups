@@ -17,6 +17,11 @@ function load<T>(path: string): Promise<T> {
   return cache.get(path) as Promise<T>;
 }
 
+/** Replace a cached file with fresh data (Refresh button). */
+export function prime(path: string, value: unknown): void {
+  cache.set(path, Promise.resolve(value));
+}
+
 export const loadMeta = () => load<Meta>('meta.json');
 export const loadTeams = () => load<Team[]>('teams.json');
 export const loadPlayers = () => load<Player[]>('players.json');

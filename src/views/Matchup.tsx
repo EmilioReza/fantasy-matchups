@@ -178,13 +178,21 @@ function BoxScore(props: {
       if (finalSet.has(d)) {
         if (counts(r, i, d)) sum += r.daily[d] ?? 0;
         else bench += r.daily[d] ?? 0;
-      } else if (s.starter) {
-        const fixed = ov[r.playerId]?.days?.[d];
-        const g = r.remaining.find((x) => x.date === d);
-        if (fixed != null) sum += fixed;
-        else if (g && ov[r.playerId]?.gamesLeft == null) {
-          sum += g.p * s.fpg;
-          est = true;
+      } else {
+        // Today while games are on (Refresh): points so far, plus the rest of live games.
+        const st = r.dailyStatus[d];
+        if (st === 'played' || st === 'dnp' || st === 'live') {
+          if (counts(r, i, d)) sum += r.daily[d] ?? 0;
+          else bench += r.daily[d] ?? 0;
+        }
+        if (s.starter) {
+          const fixed = ov[r.playerId]?.days?.[d];
+          const g = r.remaining.find((x) => x.date === d);
+          if (fixed != null) sum += fixed;
+          else if (g && ov[r.playerId]?.gamesLeft == null) {
+            sum += g.p * s.fpg * (g.scale ?? 1);
+            est = true;
+          }
         }
       }
     });
@@ -227,7 +235,7 @@ function BoxScore(props: {
               const p = core.players.get(r.playerId);
               const o = ov[r.playerId] ?? {};
               const name = p?.name ?? `Player ${r.playerId}`;
-              const used = week.dates.filter((d) => finalSet.has(d) && (r.dailyStatus[d] === 'played' || r.dailyStatus[d] === 'dnp')).length;
+              const used = week.dates.filter((d) => (r.dailyStatus[d] === 'played' || r.dailyStatus[d] === 'dnp' || r.dailyStatus[d] === 'live') && !r.remaining.some((g) => g.date === d)).length;
               const gShown = o.gamesLeft != null ? used + o.gamesLeft : r.gamesThisPeriod;
               const left = s.remaining.filter((g) => g.fixed != null || g.p > 0).length;
               const rowProj = s.actual + expectedRemaining(s);
@@ -306,6 +314,12 @@ function BoxScore(props: {
                       if (st === 'dnp') return <td class="num day-cell locked dnp" title="DNP">0</td>;
                       if (st === 'not_rostered') return <td class="num day-cell locked off" title="Not on this roster"></td>;
                       return <td class="num day-cell locked nogame" title="No game">–</td>;
+                    }
+                    if (st === 'played' || st === 'dnp' || st === 'live') {
+                      const counted = counts(r, i, d);
+                      const g = r.remaining.find((x) => x.date === d);
+                      const tip = st === 'live' ? `Live: ${fmt0(r.daily[d] ?? 0)} so far${g ? `, about ${Math.round((g.scale ?? 1) * 100)}% of the game left` : ''}` : st === 'dnp' ? 'DNP' : 'Final';
+                      return <td class={`num day-cell locked ${st === 'live' ? 'live' : ''} ${counted ? '' : 'not-counted'}`} title={counted ? tip : `${tip} · on bench: not counted`}>{fmt0(r.daily[d] ?? 0)}</td>;
                     }
                     if (st !== 'scheduled') return <td class="num day-cell nogame" title={st === 'not_rostered' ? 'Not on this roster' : 'No game'}>{st === 'not_rostered' ? '' : '–'}</td>;
                     const g = r.remaining.find((x) => x.date === d);
@@ -419,10 +433,10 @@ export function MatchupView({ core, period, matchupId }: { core: Core; period: n
   const [src, setSrc] = useState<FpgSource>(() => (readKey(FPG_KEY) === 'last15' ? 'last15' : 'season'));
 
   useEffect(() => {
-    setWeek(null);
     setOv(loadOverrides(key));
     loadWeek(period).then(setWeek, (e) => setErr(e.message));
-  }, [period, matchupId]);
+  }, [period, matchupId, core]);
+  useEffect(() => setWeek(null), [period, matchupId]);
 
   const m = week?.matchups.find((x) => x.matchupId === matchupId);
   const editable = !!week && week.status !== 'final';

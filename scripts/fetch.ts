@@ -1,77 +1,46 @@
 // Nightly fetch: pull every ESPN view we need into RAW_DIR (a temp folder, never committed).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { AuthError, espnGet, freeAgentFilterHeader, leaguePath, loadLeagueConfig, playerFilterHeader, scrub, seasonPath } from './espn-client.ts';
+import { AuthError, espnGet, loadLeagueConfig, scrub } from './espn-client.ts';
 import { RAW_DIR, WEEKS_DIR, ensureDir } from './paths.ts';
-import { matchupPeriodScoringPeriods, parseProSchedule, parseSettings, spToDate } from '../src/lib/espn.ts';
+import { fetchRaw } from '../src/lib/pipeline.ts';
 import { zonedParts } from '../src/lib/dates.ts';
 
 async function main() {
   const cfg = loadLeagueConfig();
   ensureDir(RAW_DIR);
   const save = (name: string, data: unknown) => writeFileSync(join(RAW_DIR, name), JSON.stringify(scrub(data)));
-
-  const league: any = await espnGet(
-    leaguePath(cfg, ['mTeam', 'mRoster', 'mMatchup', 'mMatchupScore', 'mSettings', 'mStatus']),
-  );
-  save('league.json', league);
-  const proRaw = await espnGet(seasonPath(cfg, ['proTeamSchedules_wl']));
-  save('pro-schedules.json', proRaw);
-
-  const settings = parseSettings(league);
-  const pro = parseProSchedule(proRaw);
   const todayET = process.env.TODAY_ET ?? zonedParts(new Date(), 'America/New_York').date;
 
-  // Every finished day of every period that is not yet frozen as final.
-  const sps = new Set<number>();
-  for (let mp = 1; mp <= settings.currentMatchupPeriod; mp++) {
-    const f = join(WEEKS_DIR, `${mp}.json`);
-    if (existsSync(f) && JSON.parse(readFileSync(f, 'utf8')).status === 'final') continue;
-    for (const sp of matchupPeriodScoringPeriods(settings, pro.day1, mp)) {
-      if (spToDate(pro.day1, sp) < todayET) sps.add(sp);
-    }
+  const weekFile = (mp: number) => join(WEEKS_DIR, `${mp}.json`);
+  const frozen = (mp: number) => existsSync(weekFile(mp)) && JSON.parse(readFileSync(weekFile(mp), 'utf8')).status === 'final';
+  // Everyone in published weeks too, so a player dropped since then still has a name.
+  const extra = new Set<number>();
+  for (let mp = 1; existsSync(weekFile(mp)); mp++) {
+    for (const m of JSON.parse(readFileSync(weekFile(mp), 'utf8')).matchups ?? [])
+      for (const rows of Object.values<any[]>(m.lineups ?? {})) for (const r of rows) extra.add(r.playerId);
   }
 
-  const playerIds = new Set<number>(league.teams.flatMap((t: any) => t.roster.entries.map((e: any) => e.playerId)));
-  // Players from frozen weeks too, so someone dropped since then still has a name.
-  for (let mp = 1; mp <= settings.currentMatchupPeriod; mp++) {
-    const f = join(WEEKS_DIR, `${mp}.json`);
-    if (!existsSync(f)) continue;
-    for (const m of JSON.parse(readFileSync(f, 'utf8')).matchups ?? [])
-      for (const rows of Object.values<any[]>(m.lineups ?? {})) for (const r of rows) playerIds.add(r.playerId);
-  }
-  for (const sp of [...sps].sort((a, b) => a - b)) {
-    const day: any = await espnGet(leaguePath(cfg, ['mRoster'], `&scoringPeriodId=${sp}`));
-    for (const t of day.teams) for (const e of t.roster?.entries ?? []) playerIds.add(e.playerId);
-    save(`roster-sp${sp}.json`, day);
-  }
+  const raw = await fetchRaw((path, headers) => espnGet(path, headers), cfg, {
+    todayET,
+    // Every finished day of every period that is not yet frozen as final.
+    wantDay: (mp, date) => !frozen(mp) && date < todayET,
+    extraPlayerIds: extra,
+  });
 
-  // Planned lineups: ESPN keeps each team's roster and slots for future days (pending adds/drops and
-  // lineup moves included). Lineups lock weekly, so the first day of each future period is its lineup.
-  const planned: number[] = [];
-  const lastPeriod = Math.max(...(league.schedule ?? []).map((m: any) => m.matchupPeriodId ?? 0), settings.currentMatchupPeriod);
-  for (let mp = settings.currentMatchupPeriod + 1; mp <= lastPeriod; mp++) {
-    const first = matchupPeriodScoringPeriods(settings, pro.day1, mp)[0];
-    if (first == null) continue;
-    const day: any = await espnGet(leaguePath(cfg, ['mRoster'], `&scoringPeriodId=${first}`));
-    for (const t of day.teams) for (const e of t.roster?.entries ?? []) playerIds.add(e.playerId);
-    save(`plan-mp${mp}.json`, day);
-    planned.push(mp);
-  }
-
-  const ids = [...playerIds];
-  const players: any[] = [];
-  for (let i = 0; i < ids.length; i += 150) {
-    const chunk = ids.slice(i, i + 150);
-    const res: any = await espnGet(leaguePath(cfg, ['kona_playercard']), playerFilterHeader(chunk, cfg.season));
-    players.push(...res.players);
-  }
-  save('players.json', { players });
-  // Most-owned free agents and waiver players, for what-if pickups.
-  const fa: any = await espnGet(leaguePath(cfg, ['kona_player_info']), freeAgentFilterHeader(150, cfg.season));
-  save('freeagents.json', { players: fa.players ?? [] });
-  writeFileSync(join(RAW_DIR, 'manifest.json'), JSON.stringify({ todayET, scoringPeriods: [...sps].sort((a, b) => a - b), plannedPeriods: planned }));
-  console.log(`fetched league, schedule, ${sps.size} day rosters, ${planned.length} planned lineups, ${players.length} players, ${fa.players?.length ?? 0} free agents (today ET ${todayET})`);
+  save('league.json', raw.league);
+  save('pro-schedules.json', raw.pro);
+  for (const [sp, day] of Object.entries(raw.days)) save(`roster-sp${sp}.json`, day);
+  for (const [mp, day] of Object.entries(raw.planned)) save(`plan-mp${mp}.json`, day);
+  save('players.json', raw.players);
+  save('freeagents.json', raw.freeAgents);
+  const scoringPeriods = Object.keys(raw.days).map(Number).sort((a, b) => a - b);
+  const plannedPeriods = Object.keys(raw.planned).map(Number).sort((a, b) => a - b);
+  writeFileSync(join(RAW_DIR, 'manifest.json'), JSON.stringify({ todayET, scoringPeriods, plannedPeriods }));
+  console.log(
+    `fetched league, schedule, ${scoringPeriods.length} day rosters, ${plannedPeriods.length} planned lineups, ` +
+      `${raw.players.players.length} players, ${raw.freeAgents.players.length} free agents (today ET ${todayET})`,
+  );
 }
 
 main().catch((e) => {

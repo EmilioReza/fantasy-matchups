@@ -1,9 +1,11 @@
 // Shapes of the generated JSON under public/data/. Shared by the nightly job and the browser.
 
-export type DayStatus = 'played' | 'dnp' | 'no_game' | 'scheduled' | 'not_rostered';
+export type DayStatus = 'played' | 'dnp' | 'no_game' | 'scheduled' | 'not_rostered' | 'live';
 export type WeekStatus = 'final' | 'in_progress' | 'upcoming';
 
 export interface Meta {
+  /** Set when the browser refreshed straight from ESPN (Refresh button). */
+  liveAt?: string;
   schemaVersion: 1;
   leagueId: number;
   leagueName: string;
@@ -60,6 +62,8 @@ export interface Player {
 export interface RemainingGame {
   date: string;
   p: number;
+  /** Share of the game still to play (live games); 1 when omitted. */
+  scale?: number;
 }
 
 export interface LineupRow {
