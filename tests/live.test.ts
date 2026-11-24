@@ -36,3 +36,29 @@ describe('live games', () => {
     expect(live.finalDates).not.toContain('2026-11-16');
   });
 });
+
+describe('editing a live game', () => {
+  const base = {
+    playerId: 1, slot: 'PG', starter: true, fpg: 40, sd: null, gamesThisPeriod: 2,
+    dailyStatus: { '2026-11-22': 'played', '2026-11-23': 'live' } as const,
+    daily: { '2026-11-22': 30, '2026-11-23': 18 },
+    dailyStarter: { '2026-11-22': true, '2026-11-23': true },
+    actual: 48,
+    remaining: [{ date: '2026-11-23', p: 1, scale: 0.5 }],
+  };
+  it('a typed total replaces points so far and the projected rest', () => {
+    const untouched = toSimPlayer(base, undefined);
+    expect(untouched.actual + expectedRemaining(untouched)).toBeCloseTo(48 + 20);
+    const typed = toSimPlayer(base, { days: { '2026-11-23': 25 } });
+    expect(typed.actual).toBe(30);
+    expect(typed.actual + expectedRemaining(typed)).toBe(55);
+  });
+  it('works for a game that already finished today, and for a benched player', () => {
+    const done = { ...base, dailyStatus: { ...base.dailyStatus, '2026-11-23': 'played' as const }, remaining: [] };
+    const typed = toSimPlayer(done, { days: { '2026-11-23': 10 } });
+    expect(typed.actual + expectedRemaining(typed)).toBe(40);
+    const bench = { ...done, starter: false, dailyStarter: { '2026-11-22': false, '2026-11-23': false }, actual: 0 };
+    const b = toSimPlayer(bench, { days: { '2026-11-23': 10 } });
+    expect(b.actual + expectedRemaining(b)).toBe(0); // bench points never count
+  });
+});

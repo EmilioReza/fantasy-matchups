@@ -3,7 +3,7 @@ import type { Core } from '../data.ts';
 import { loadWeek } from '../data.ts';
 import { dayLabel, fmt0, fmt1, pct, shortRange } from '../format.ts';
 import {
-  MODEL, expectedRemaining, playerFpg, matchupSeed, projectTeam, round1, toSimPlayer, weekPoints, winProbability, type SimPlayer,
+  MODEL, expectedRemaining, isTodayGame, playerFpg, matchupSeed, projectTeam, round1, toSimPlayer, weekPoints, winProbability, type SimPlayer,
 } from '../lib/model.ts';
 import {
   clearOverrides, loadOverrides, overrideKey, readKey, saveOverrides, setDay, setField, setPickup, writeKey,
@@ -67,6 +67,14 @@ interface TeamCalc {
 function useMatchupCalc(core: Core, week: Week | null, m: Matchup | undefined, ov: MatchupOverrides, src: FpgSource): TeamCalc[] {
   return useMemo(() => {
     if (!m || !week) return [];
+    // Edits on days that have since gone final are ignored: official points win.
+    const final = new Set(week.finalDates);
+    const live: MatchupOverrides = {};
+    for (const [pid, o] of Object.entries(ov)) {
+      const days = o.days ? Object.fromEntries(Object.entries(o.days).filter(([d]) => !final.has(d))) : undefined;
+      live[pid] = days ? { ...o, days } : o;
+    }
+    ov = live;
     return [m.home.teamId, m.away.teamId].map((teamId) => {
       const pickups = Object.entries(ov)
         .filter(([, o]) => o.addTo === teamId)
@@ -78,7 +86,17 @@ function useMatchupCalc(core: Core, week: Week | null, m: Matchup | undefined, o
         const base = src === 'last15' ? core.players.get(r.playerId)?.fpgLast15 ?? r.fpg : r.fpg;
         return toSimPlayer(r, ov[r.playerId], base);
       });
-      return { teamId, rows, sims, proj: projectTeam(sims) };
+      const proj = projectTeam(sims);
+      // "So far" stays the points actually scored; a number typed over today's game only moves the projection.
+      for (const [i, r] of rows.entries()) {
+        const o = ov[r.playerId];
+        for (const d of Object.keys(o?.days ?? {})) {
+          if (!isTodayGame(r.dailyStatus[d])) continue;
+          const counted = o?.starter !== undefined ? o.starter : !!r.dailyStarter[d];
+          if (counted && sims[i]) proj.actual = round1(proj.actual + (r.daily[d] ?? 0));
+        }
+      }
+      return { teamId, rows, sims, proj };
     });
   }, [core, week, m, ov, src]);
 }
@@ -169,6 +187,13 @@ function BoxScore(props: {
   const counts = (r: LineupRow, i: number, d: string) =>
     ov[r.playerId]?.starter !== undefined ? calc.sims[i].starter : !!r.dailyStarter[d];
 
+  // Points actually scored: a number typed over today's game changes the projection, not this.
+  const officialActual = (r: LineupRow, i: number) =>
+    calc.sims[i].actual +
+    Object.keys(ov[r.playerId]?.days ?? {})
+      .filter((d) => !finalSet.has(d) && isTodayGame(r.dailyStatus[d]) && counts(r, i, d))
+      .reduce((a, d) => a + (r.daily[d] ?? 0), 0);
+
   const dayTotals = week.dates.map((d) => {
     let sum = 0;
     let bench = 0;
@@ -181,12 +206,13 @@ function BoxScore(props: {
       } else {
         // Today while games are on (Refresh): points so far, plus the rest of live games.
         const st = r.dailyStatus[d];
-        if (st === 'played' || st === 'dnp' || st === 'live') {
+        const typed = ov[r.playerId]?.days?.[d];
+        if (isTodayGame(st) && typed == null) {
           if (counts(r, i, d)) sum += r.daily[d] ?? 0;
           else bench += r.daily[d] ?? 0;
         }
         if (s.starter) {
-          const fixed = ov[r.playerId]?.days?.[d];
+          const fixed = typed;
           const g = r.remaining.find((x) => x.date === d);
           if (fixed != null) sum += fixed;
           else if (g && ov[r.playerId]?.gamesLeft == null) {
@@ -315,11 +341,27 @@ function BoxScore(props: {
                       if (st === 'not_rostered') return <td class="num day-cell locked off" title="Not on this roster"></td>;
                       return <td class="num day-cell locked nogame" title="No game">–</td>;
                     }
-                    if (st === 'played' || st === 'dnp' || st === 'live') {
+                    if (isTodayGame(st)) {
                       const counted = counts(r, i, d);
                       const g = r.remaining.find((x) => x.date === d);
-                      const tip = st === 'live' ? `Live: ${fmt0(r.daily[d] ?? 0)} so far${g ? `, about ${Math.round((g.scale ?? 1) * 100)}% of the game left` : ''}` : st === 'dnp' ? 'DNP' : 'Final';
-                      return <td class={`num day-cell locked ${st === 'live' ? 'live' : ''} ${counted ? '' : 'not-counted'}`} title={counted ? tip : `${tip} · on bench: not counted`}>{fmt0(r.daily[d] ?? 0)}</td>;
+                      const sofar = r.daily[d] ?? 0;
+                      const tip = st === 'live' ? `Live: ${fmt0(sofar)} so far${g ? `, about ${Math.round((g.scale ?? 1) * 100)}% of the game left` : ''}` : st === 'dnp' ? 'DNP' : 'Final';
+                      const fixed = o.days?.[d];
+                      if (!editable)
+                        return <td class={`num day-cell locked ${st === 'live' ? 'live' : ''} ${counted ? '' : 'not-counted'}`} title={counted ? tip : `${tip} · on bench: not counted`}>{fmt0(sofar)}</td>;
+                      // Shows the points so far; type a number to set the player's total for the day.
+                      return (
+                        <td class={`num day-cell open ${st === 'live' ? 'live' : ''} ${counted || fixed != null ? '' : 'not-counted'}`} title={`${tip}. Type a number to set ${name}'s total for the day.`}>
+                          <NumInput
+                            class="narrow"
+                            value={fixed ?? null}
+                            edited={fixed !== undefined}
+                            placeholder={fmt0(sofar)}
+                            label={`${name} total points on ${dayLabel(d).wd} ${dayLabel(d).md} (${tip})`}
+                            onCommit={(v) => onChange(setDay(ov, r.playerId, d, v))}
+                          />
+                        </td>
+                      );
                     }
                     if (st !== 'scheduled') return <td class="num day-cell nogame" title={st === 'not_rostered' ? 'Not on this roster' : 'No game'}>{st === 'not_rostered' ? '' : '–'}</td>;
                     const g = r.remaining.find((x) => x.date === d);
@@ -341,7 +383,7 @@ function BoxScore(props: {
                   })}
                   <td class="num">
                     {started ? (
-                      <span class="strong">{fmt0(s.actual)}</span>
+                      <span class="strong">{fmt0(officialActual(r, i))}</span>
                     ) : (
                       <span class="muted" title="On bench: not counted">{fmt0(weekPoints(r))}</span>
                     )}

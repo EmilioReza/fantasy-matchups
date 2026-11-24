@@ -144,6 +144,15 @@ export function toSimPlayer(row: LineupRow, ov: RowOverride | undefined, fpgBase
     scale: g.scale,
     fixed: days[g.date] ?? null,
   }));
+  // Today's games after a Refresh (live or just finished): a typed number is the player's total for
+  // the day, so it replaces the points so far (and the projected rest of a live game).
+  let actual = actualFor(row, ov?.starter);
+  for (const [date, value] of Object.entries(days)) {
+    if (!isTodayGame(row.dailyStatus[date])) continue;
+    const counted = ov?.starter !== undefined ? ov.starter : !!row.dailyStarter[date];
+    if (counted) actual -= row.daily[date] ?? 0;
+    if (!row.remaining.some((g) => g.date === date)) remaining.push({ p: 1, fixed: value });
+  }
   if (ov?.gamesLeft != null) {
     const fixed = remaining.filter((g) => g.fixed != null);
     const free = remaining.filter((g) => g.fixed == null);
@@ -155,10 +164,13 @@ export function toSimPlayer(row: LineupRow, ov: RowOverride | undefined, fpgBase
     starter: ov?.starter ?? row.starter,
     fpg,
     sd: effectiveSd(row.sd, fpg, cfg, row.fpg),
-    actual: actualFor(row, ov?.starter),
+    actual: round1(actual),
     remaining,
   };
 }
+
+/** Day statuses that can appear on a day that is not final yet: today's games after a Refresh. */
+export const isTodayGame = (st: string | undefined) => st === 'live' || st === 'played' || st === 'dnp';
 
 // ---------- Projection ----------
 
