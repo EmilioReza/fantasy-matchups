@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predictions.schema.json",
+  "title": "predictions",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "period": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "date": {
+        "type": "string",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+      },
+      "matchupId": {
+        "type": "integer"
+      },
+      "homeId": {
+        "type": "integer"
+      },
+      "awayId": {
+        "type": "integer"
+      },
+      "pHome": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "source": {
+        "enum": [
+          "live",
+          "replay"
+        ]
+      },
+      "model": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "homeWon": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "enum": [
+          0,
+          0.5,
+          1,
+          null
+        ]
+      }
+    },
+    "required": [
+      "period",
+      "date",
+      "matchupId",
+      "homeId",
+      "awayId",
+      "pHome",
+      "source",
+      "model",
+      "homeWon"
+    ],
+    "additionalProperties": false
+  }
+}

@@ -3,7 +3,9 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spToDate } from '../src/lib/espn.ts';
 import { buildFromRaw, type RawData } from '../src/lib/pipeline.ts';
-import type { Meta, Week } from '../src/lib/types.ts';
+import { gradePredictions, recordPredictions } from '../src/lib/predictions.ts';
+import { MODEL } from '../src/lib/model.ts';
+import type { Meta, Prediction, Week } from '../src/lib/types.ts';
 import { loadLeagueConfig } from './espn-client.ts';
 import { DATA_DIR, RAW_DIR, WEEKS_DIR, ensureDir } from './paths.ts';
 
@@ -36,6 +38,15 @@ for (const week of built.weeks) {
 for (const w of built.warnings) {
   console.warn(`::warning::period ${w.matchupPeriod} team ${w.teamId} ${w.date}: ours ${w.ours} vs ESPN ${w.espn}`);
 }
+
+// Track record: save today's win probabilities, grade any week that is now final.
+const predFile = join(DATA_DIR, 'predictions.json');
+let predictions = readJson<Prediction[]>(predFile) ?? [];
+const currentWeek = built.weeks.find((w) => w.matchupPeriod === built.settings.currentMatchupPeriod);
+if (currentWeek) predictions = recordPredictions(predictions, currentWeek, rawData.todayET, MODEL.version);
+const allWeeks = readdirSync(WEEKS_DIR).map((f) => readJson<Week>(join(WEEKS_DIR, f))!);
+predictions = gradePredictions(predictions, allWeeks);
+writeJson(predFile, predictions);
 
 writeJson(join(DATA_DIR, 'teams.json'), built.teams);
 writeJson(join(DATA_DIR, 'players.json'), built.players);

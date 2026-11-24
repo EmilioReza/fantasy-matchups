@@ -111,3 +111,20 @@ export interface Schedule {
   periods: { matchupPeriod: number; dates: string[] }[];
   proTeams: Record<string, { abbrev: string; games: string[] }>;
 }
+
+/** One day's published win probability for a matchup, graded once the week is final. */
+export interface Prediction {
+  period: number;
+  /** The day it was made for (ET), before that day's games. */
+  date: string;
+  matchupId: number;
+  homeId: number;
+  awayId: number;
+  pHome: number;
+  /** live: published by the site that day. replay: computed afterwards from the data known then. */
+  source: 'live' | 'replay';
+  /** Model version (config/model.json "version"). */
+  model: number;
+  /** 1 home won, 0 away won, 0.5 tie; null until the week is final. */
+  homeWon: number | null;
+}

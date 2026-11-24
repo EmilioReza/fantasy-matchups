@@ -1,5 +1,5 @@
 // Loads the static JSON the nightly job publishes. Cached per session.
-import type { Meta, Player, Schedule, Team, Week } from './lib/types.ts';
+import type { Meta, Player, Prediction, Schedule, Team, Week } from './lib/types.ts';
 
 const base = import.meta.env.BASE_URL;
 const cache = new Map<string, Promise<unknown>>();
@@ -27,6 +27,7 @@ export const loadTeams = () => load<Team[]>('teams.json');
 export const loadPlayers = () => load<Player[]>('players.json');
 export const loadSchedule = () => load<Schedule>('schedule.json');
 export const loadFreeAgents = () => load<Player[]>('freeagents.json').catch(() => [] as Player[]);
+export const loadPredictions = () => load<Prediction[]>('predictions.json');
 export const loadWeek = (p: number) => load<Week>(`weeks/${p}.json`);
 
 export interface Core {

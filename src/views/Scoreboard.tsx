@@ -124,6 +124,9 @@ export function Scoreboard({ core, period }: { core: Core; period: number }) {
           <MatchupCard core={core} week={week!} m={m} mine={m.home.teamId === myTeam || m.away.teamId === myTeam} />
         ))}
       </div>
+      <p class="muted small">
+        <a href="#/record">Model track record: how often the favourite actually wins →</a>
+      </p>
       {myTeam && (
         <p class="muted small">
           <a href={`#/team/${myTeam}`}>View {core.teams.get(myTeam)?.name} roster and results →</a>

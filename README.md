@@ -58,6 +58,15 @@ this site's origin) and rebuilds the current and future weeks with the same code
 projected, using the clock from ESPN's public NBA scoreboard. It takes a few seconds, changes nothing
 in the repository, and lasts until the page is reloaded.
 
+## Track record
+
+Each nightly run saves that day's win probabilities to `public/data/predictions.json` (the first
+run of the day wins, so it is before that day's games) and grades them once the week is final. The
+**Model track record** page (`#/record`) shows how often favourites won at each stated chance.
+Days before Nov 17, 2026 were filled by `scripts/backfill-predictions.ts`: what the site published
+(from git history) where available, otherwise a replay of the model from the games played before
+that day, marked as replayed. `config/model.json` `version` is stored with each prediction.
+
 ## Future weeks and pickups
 
 Every scheduled week is published. Upcoming weeks use the roster and lineup each manager has

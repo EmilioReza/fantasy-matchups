@@ -15,6 +15,7 @@ export function validateAll(): string[] {
     ['players', join(DATA_DIR, 'players.json')],
     ['players', join(DATA_DIR, 'freeagents.json')],
     ['schedule', join(DATA_DIR, 'schedule.json')],
+    ['predictions', join(DATA_DIR, 'predictions.json')],
     ...readdirSync(WEEKS_DIR).map((f) => ['week', join(WEEKS_DIR, f)] as [string, string]),
   ];
   const errors: string[] = [];

@@ -10,16 +10,19 @@ import { readKey, writeKey } from './lib/overrides.ts';
 import { Scoreboard } from './views/Scoreboard.tsx';
 import { MatchupView } from './views/Matchup.tsx';
 import { TeamView } from './views/Team.tsx';
+import { RecordView } from './views/Record.tsx';
 
 type Route =
   | { name: 'scoreboard'; period?: number }
   | { name: 'matchup'; period: number; matchupId: number }
-  | { name: 'team'; teamId: number };
+  | { name: 'team'; teamId: number }
+  | { name: 'record' };
 
 function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   if (parts[0] === 'week' && parts[2] === 'matchup') return { name: 'matchup', period: +parts[1], matchupId: +parts[3] };
   if (parts[0] === 'week') return { name: 'scoreboard', period: +parts[1] };
+  if (parts[0] === 'record') return { name: 'record' };
   if (parts[0] === 'team') return { name: 'team', teamId: +parts[1] };
   return { name: 'scoreboard' };
 }
@@ -147,6 +150,7 @@ function App() {
   else if (!core) body = <p class="loading">Loading league…</p>;
   else if (route.name === 'matchup') body = <MatchupView core={core} period={route.period} matchupId={route.matchupId} />;
   else if (route.name === 'team') body = <TeamView core={core} teamId={route.teamId} />;
+  else if (route.name === 'record') body = <RecordView core={core} />;
   else body = <Scoreboard core={core} period={route.period ?? core.meta.currentMatchupPeriod} />;
 
   return (
@@ -156,7 +160,7 @@ function App() {
       <main id="main" tabIndex={-1} class="wrap">{body}</main>
       <footer class="wrap site-footer">
         Points from ESPN. Projections: points so far + Σ play probability × FP/G for games left. Win probability from
-        {' '}{MODEL.trials.toLocaleString()} simulations. Not affiliated with ESPN.
+        {' '}{MODEL.trials.toLocaleString()} simulations. <a href="#/record">How accurate is it?</a> Not affiliated with ESPN.
       </footer>
     </>
   );

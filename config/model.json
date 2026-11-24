@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "playProbability": {
     "active": 0.95,
     "dayToDay": 0.7,
