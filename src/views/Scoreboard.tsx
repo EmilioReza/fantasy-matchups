@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Core } from '../data.ts';
 import { loadWeek } from '../data.ts';
-import { fmt0, fmt1, pct, shortRange } from '../format.ts';
+import { fmt0, fmt1, pctPair, shortRange } from '../format.ts';
 import { readKey, writeKey } from '../lib/overrides.ts';
 import type { Matchup, Side, Week } from '../lib/types.ts';
 import { TeamLogo, WinBar, WinPct, record } from './common.tsx';
@@ -53,10 +53,10 @@ function MatchupCard({ core, week, m, mine }: { core: Core; week: Week; m: Match
       {!final && (
         <div class="card-foot">
           <div class="card-wp num">
-            <WinPct team={h} p={m.home.winProb} side="home" />
-            <WinPct team={a} p={m.away.winProb} side="away" />
+            <WinPct team={h} pHome={m.home.winProb} side="home" />
+            <WinPct team={a} pHome={m.home.winProb} side="away" />
           </div>
-          <WinBar home={m.home.winProb} label={`Win probability: ${h?.name} ${pct(m.home.winProb)}, ${a?.name} ${pct(m.away.winProb)}`} />
+          <WinBar home={m.home.winProb} label={`Win probability: ${h?.name} ${pctPair(m.home.winProb).home}, ${a?.name} ${pctPair(m.home.winProb).away}`} />
           <div class="muted wp-mid">{week.status === 'upcoming' ? 'Win probability' : `Win probability · projected margin ${fmt1(margin)}`}</div>
         </div>
       )}

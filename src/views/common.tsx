@@ -1,7 +1,6 @@
 import { useState } from 'preact/hooks';
 import type { Team } from '../lib/types.ts';
-import { pct } from '../format.ts';
-import { STATUS_CHIP } from '../format.ts';
+import { STATUS_CHIP, pctPair } from '../format.ts';
 
 export function TeamLogo({ team, size = 36 }: { team: Team | undefined; size?: number }) {
   const [failed, setFailed] = useState(false);
@@ -21,13 +20,17 @@ export function TeamLogo({ team, size = 36 }: { team: Team | undefined; size?: n
 /** First word of a team name: "Capture the Flagg" → "Capture". */
 export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? '';
 
-/** "62% Emilio" on the home side, "Mhyank 38%" on the away side: the manager's first name, team name on hover. */
-export function WinPct({ team, p, side }: { team: Team | undefined; p: number; side: 'home' | 'away' }) {
+/**
+ * "62% Emilio" on the home side, "Mhyank 38%" on the away side: the manager's first name, team name on
+ * hover. Both sides come from the home team's chance so the pair always adds up to 100%.
+ */
+export function WinPct({ team, pHome, side }: { team: Team | undefined; pHome: number; side: 'home' | 'away' }) {
   const full = team?.name ?? '';
   const name = team?.owner || firstName(full);
-  const num = <strong class="wp-num">{pct(p)}</strong>;
+  const shown = pctPair(pHome)[side];
+  const num = <strong class="wp-num">{shown}</strong>;
   return (
-    <span class={`wp wp-${side} c-${side}`} title={`${name} (${full}): ${pct(p)} to win`}>
+    <span class={`wp wp-${side} c-${side}`} title={`${name} (${full}): ${shown} to win`}>
       {side === 'home' ? <>{num}<span class="wp-name">{name}</span></> : <><span class="wp-name">{name}</span>{num}</>}
     </span>
   );
@@ -36,7 +39,7 @@ export function WinPct({ team, p, side }: { team: Team | undefined; p: number; s
 export function WinBar({ home, label }: { home: number; label?: string }) {
   const h = Math.max(0, Math.min(1, home));
   return (
-    <div class="winbar" role="img" aria-label={label ?? `Win probability: home ${pct(h)}, away ${pct(1 - h)}`}>
+    <div class="winbar" role="img" aria-label={label ?? `Win probability: home ${pctPair(h).home}, away ${pctPair(h).away}`}>
       <span class="winbar-home" style={{ width: `${h * 100}%` }} />
       <span class="winbar-away" style={{ width: `${(1 - h) * 100}%` }} />
     </div>

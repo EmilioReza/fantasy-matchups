@@ -2,6 +2,15 @@ export const fmt1 = (x: number) => (Math.round(x * 10) / 10).toFixed(1);
 export const fmt0 = (x: number) => Math.round(x).toLocaleString('en-US');
 export const pct = (x: number) => `${Math.round(x * 100)}%`;
 
+/**
+ * Both sides of a matchup as whole percents that always add up to 100. Rounding each side on its
+ * own can show 51% and 50% (50.5 and 49.5 both round up), so the away side gets the remainder.
+ */
+export function pctPair(pHome: number): { home: string; away: string } {
+  const h = Math.round(Math.max(0, Math.min(1, pHome)) * 100);
+  return { home: `${h}%`, away: `${100 - h}%` };
+}
+
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export function dayLabel(date: string): { wd: string; md: string } {
   const d = new Date(date + 'T12:00:00Z');

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Core } from '../data.ts';
 import { loadWeek } from '../data.ts';
-import { dayLabel, fmt0, fmt1, pct, shortRange } from '../format.ts';
+import { dayLabel, fmt0, fmt1, pctPair, shortRange } from '../format.ts';
 import {
   MODEL, expectedRemaining, isTodayGame, playerFpg, matchupSeed, projectTeam, round1, toSimPlayer, weekPoints, winProbability, type SimPlayer,
 } from '../lib/model.ts';
@@ -149,10 +149,10 @@ function Band({ core, calc, wp, week }: { core: Core; calc: TeamCalc[]; wp: { ho
           <>
             <div class="band-wp-label">Win probability</div>
             <div class="band-wp num">
-              <WinPct team={th} p={wp.home} side="home" />
-              <WinPct team={ta} p={wp.away} side="away" />
+              <WinPct team={th} pHome={wp.home} side="home" />
+              <WinPct team={ta} pHome={wp.home} side="away" />
             </div>
-            <WinBar home={wp.home} label={`Win probability: ${th.name} ${pct(wp.home)}, ${ta.name} ${pct(wp.away)}`} />
+            <WinBar home={wp.home} label={`Win probability: ${th.name} ${pctPair(wp.home).home}, ${ta.name} ${pctPair(wp.home).away}`} />
           </>
         )}
       </div>
